@@ -1,0 +1,13 @@
+[package]
+name = "Voxelized2D-Rust"
+version = "0.0.1"
+authors = ["russoul <russoulmc@gmail.com>"]
+build = "build.rs"
+links = "rsutil"
+
+[dependencies]
+libc = "0.2.0"
+
+[build-dependencies]
+cc = "1.0"
+
