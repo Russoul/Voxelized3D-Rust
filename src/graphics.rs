@@ -17,7 +17,7 @@ pub static GLFW_REPEAT : usize = 2;
 
 pub static GL_COLOR_BUFFER_BIT : usize = 0x00004000;
 
-pub enum Glfw_window{}
+pub enum GlfwWindow{}
 
 #[link(name = "GL")]
 #[link(name = "glfw")]
@@ -29,19 +29,19 @@ extern {
                         height : c_int,
                         title : *const c_char,
                         ptr1 : *mut c_void,
-                        ptr2 : *mut c_void) -> *mut Glfw_window;
+                        ptr2 : *mut c_void) -> *mut GlfwWindow;
     fn glfwTerminate();
-    fn glfwMakeContextCurrent(window : *mut Glfw_window);
+    fn glfwMakeContextCurrent(window : *mut GlfwWindow);
     fn _gladLoadGLLoader();
     fn glViewport(x : c_uint, y : c_uint, w : c_uint, h : c_uint);
     fn glfwSetFramebufferSizeCallback(
-        win : *mut Glfw_window,
-        callback : extern fn(* mut Glfw_window, isize, isize));
-    fn glfwWindowShouldClose(win : *mut Glfw_window) -> bool;
-    fn glfwSwapBuffers(win : *mut Glfw_window);
+        win : *mut GlfwWindow,
+        callback : extern fn(* mut GlfwWindow, isize, isize));
+    fn glfwWindowShouldClose(win : *mut GlfwWindow) -> bool;
+    fn glfwSwapBuffers(win : *mut GlfwWindow);
     fn glfwPollEvents();
-    fn glfwGetKey(win : *mut Glfw_window, key : usize) -> usize;
-    fn glfwSetWindowShouldClose(win : *mut Glfw_window, val : bool);
+    fn glfwGetKey(win : *mut GlfwWindow, key : usize) -> usize;
+    fn glfwSetWindowShouldClose(win : *mut GlfwWindow, val : bool);
 
     fn glClearColor(r : f32, g : f32, b : f32, a : f32);
     fn glClear(val : usize);
@@ -75,7 +75,7 @@ pub fn glfw_window_hint(c_enum : usize, val : usize){
 
 pub fn glfw_create_window(w : isize,
                           h : isize,
-                          title : &str) -> *mut Glfw_window{
+                          title : &str) -> *mut GlfwWindow{
     let p1 : *mut c_void = ptr::null_mut();
     let p2 : *mut c_void = ptr::null_mut();
     unsafe{
@@ -86,7 +86,7 @@ pub fn glfw_create_window(w : isize,
     }
 }
 
-pub fn glfw_make_context_current(win : *mut Glfw_window){
+pub fn glfw_make_context_current(win : *mut GlfwWindow){
     unsafe{
         glfwMakeContextCurrent(win);
     }
@@ -98,20 +98,20 @@ pub fn gl_viewport(x : isize, y : isize, w : isize, h : isize){
     }
 }
 
-pub fn glfw_set_framebuffer_size_callback(win : *mut Glfw_window, cb:
-                                          extern fn(*mut Glfw_window, isize, isize)){
+pub fn glfw_set_framebuffer_size_callback(win : *mut GlfwWindow, cb:
+                                          extern fn(*mut GlfwWindow, isize, isize)){
     unsafe {
         glfwSetFramebufferSizeCallback(win, cb);
     }
 }
 
-pub fn glfw_window_should_close(win : *mut Glfw_window) -> bool {
+pub fn glfw_window_should_close(win : *mut GlfwWindow) -> bool {
     unsafe{
         glfwWindowShouldClose(win)
     }
 }
 
-pub fn glfw_swap_buffers(win : *mut Glfw_window){
+pub fn glfw_swap_buffers(win : *mut GlfwWindow){
     unsafe{
         glfwSwapBuffers(win);
     }
@@ -123,13 +123,13 @@ pub fn glfw_poll_events(){
     }
 }
 
-pub fn glfw_get_key(win : *mut Glfw_window, key : usize) -> usize{
+pub fn glfw_get_key(win : *mut GlfwWindow, key : usize) -> usize{
     unsafe{
         glfwGetKey(win, key)
     }
 }
 
-pub fn glfw_set_window_should_close(win : *mut Glfw_window, val : bool){
+pub fn glfw_set_window_should_close(win : *mut GlfwWindow, val : bool){
     unsafe{
         glfwSetWindowShouldClose(win, val);
     }

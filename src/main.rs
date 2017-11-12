@@ -1,19 +1,38 @@
+extern crate generic_array;
+
 mod graphics;
+mod array;
+
 use graphics::*;
 use std::ptr;
+use generic_array::*;
+use array::*;
 
-extern fn framebuf_sz_cb(win : *mut Glfw_window, w : isize, h : isize){
+extern fn framebuf_sz_cb(win : *mut GlfwWindow, w : isize, h : isize){
     gl_viewport(0,0,w,h);
 }
 
-fn process_input(win : *mut Glfw_window){
+fn process_input(win : *mut GlfwWindow){
     if glfw_get_key(win, GLFW_KEY_ESCAPE) == GLFW_PRESS{
         glfw_set_window_should_close(win, true);
     }
 }
 
+
+
+
+
 fn main() {
     println!("Hello, world!"); //TODO
+    let ar1 = Array::new(arr![usize;1,2,3,4]);
+    let ar2 = ar1.clone();
+    ar1.print();
+
+    let ar3 = &ar1 + &ar1;
+    ar3.print();
+    let ar4 = &ar1 * &ar1;
+    println!("{}", ar4);
+    println!("{}", ar3);
 
     glfw_init();
     glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, 3);
