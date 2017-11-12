@@ -1,3 +1,4 @@
+
 extern crate generic_array;
 
 mod graphics;
@@ -19,11 +20,7 @@ fn process_input(win : *mut GlfwWindow){
 }
 
 
-
-
-
-fn main() {
-    println!("Hello, world!"); //TODO
+fn test_vectors(){
     let ar1 = Vector::new(arr![usize;1,2,3,4]);
     let ar2 = ar1.clone();
     ar1.print();
@@ -34,6 +31,14 @@ fn main() {
     let ar4 = &ar1 * &ar1;
     println!("{}", ar4);
     println!("{}", ar3);
+    let mapped = Vector::new(ar1.get().map(|x| x + 1));
+    println!("{}", mapped);
+}
+
+
+fn main() {
+    test_vectors();
+   
 
     glfw_init();
     glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -50,6 +55,8 @@ fn main() {
     glfw_make_context_current(win);
     glad_load_gl_loader();
 
+    println!("Using GL version: {}", gl_get_string(GL_VERSION));
+    
     glfw_set_framebuffer_size_callback(win, framebuf_sz_cb);
 
     while !glfw_window_should_close(win){

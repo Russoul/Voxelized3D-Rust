@@ -1,4 +1,4 @@
-#![feature(tuple_indexing)]
+
 extern crate num;
 extern crate generic_array;
 
@@ -42,13 +42,13 @@ impl<T : Clone,N : ArrayLength<T>> Clone for Vector<T,N>{
 
 impl<T : Display, N : ArrayLength<T>> Display for Vector<T,N>{
     fn fmt(&self, f : &mut Formatter) -> Result{
-        write!(f, "[");
+        let _ = write!(f, "[");
         for i in 0..N::to_usize(){
             if i != N::to_usize() - 1{
-                write!(f, "{}, ", self.get()[i]);
+                let _ = write!(f, "{}, ", self.get()[i]);
             }
             else{
-                write!(f, "{}", self.get()[i]);
+                let _ =write!(f, "{}", self.get()[i]);
             }
         }
         write!(f, "]")

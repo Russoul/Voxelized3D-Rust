@@ -1,6 +1,7 @@
 extern crate libc;
 use self::libc::*;
 use std::ffi::CString;
+use std::ffi::CStr;
 use std::ptr;
 
 
@@ -8,6 +9,8 @@ pub static GLFW_CONTEXT_VERSION_MAJOR : usize = 0x00022002;
 pub static GLFW_CONTEXT_VERSION_MINOR : usize = 0x00022003;
 pub static GLFW_OPENGL_PROFILE : usize = 0x00022008;
 pub static GLFW_OPENGL_CORE_PROFILE : usize = 0x00032001;
+
+pub static GL_VERSION : usize = 0x1F02;
 
 pub static GLFW_KEY_ESCAPE : usize = 256;
 
@@ -45,6 +48,7 @@ extern {
 
     fn glClearColor(r : f32, g : f32, b : f32, a : f32);
     fn glClear(val : usize);
+    fn glGetString(val : usize) -> *mut c_char;
 }
 
 
@@ -144,5 +148,11 @@ pub fn gl_clear_color(r : f32, g : f32, b : f32, a : f32){
 pub fn gl_clear(val : usize){
     unsafe{
         glClear(val);
+    }
+}
+
+pub fn gl_get_string<'a>(val : usize) -> & 'a str{
+    unsafe{
+        CStr::from_ptr(glGetString(val)).to_str().unwrap()
     }
 }
