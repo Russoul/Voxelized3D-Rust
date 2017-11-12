@@ -11,11 +11,20 @@ use self::num::Zero;
 
 
 //newtype for GenericArray, zero runtime cost
-pub struct Array<T,N : ArrayLength<T>>(pub GenericArray<T,N>);
+//'Vector' is mathematical vector
+pub struct Vector<T,N : ArrayLength<T>>(pub GenericArray<T,N>);
 
-impl<T, N : ArrayLength<T>> Array<T,N>{
-    pub fn new(a : GenericArray<T,N>) -> Array<T,N>{
-        Array(a)
+
+//Not possible :( , so the above newtype ^^ is required
+/*impl<T, N : ArrayLength<T>> GenericArray<T,N>{
+    pub fn test(&self){
+        println!("this is test !");
+    }
+}*/
+
+impl<T, N : ArrayLength<T>> Vector<T,N>{
+    pub fn new(a : GenericArray<T,N>) -> Vector<T,N>{
+        Vector(a)
     }
 
     pub fn get(&self) -> &GenericArray<T,N>{
@@ -24,14 +33,14 @@ impl<T, N : ArrayLength<T>> Array<T,N>{
 }
 
 
-impl<T : Clone,N : ArrayLength<T>> Clone for Array<T,N>{
+impl<T : Clone,N : ArrayLength<T>> Clone for Vector<T,N>{
 
-    fn clone(&self) -> Array<T,N>{
-        Array::new((&self.0).clone())
+    fn clone(&self) -> Vector<T,N>{
+        Vector::new((&self.0).clone())
     }
 }
 
-impl<T : Display, N : ArrayLength<T>> Display for Array<T,N>{
+impl<T : Display, N : ArrayLength<T>> Display for Vector<T,N>{
     fn fmt(&self, f : &mut Formatter) -> Result{
         write!(f, "[");
         for i in 0..N::to_usize(){
@@ -46,7 +55,7 @@ impl<T : Display, N : ArrayLength<T>> Display for Array<T,N>{
     }
 }
 
-impl<T : Display,N> Array<T, N> where N : ArrayLength<T>{
+impl<T : Display,N> Vector<T, N> where N : ArrayLength<T>{
     pub fn print(&self){
       print!("[");
       for i in 0..N::to_usize(){
@@ -66,14 +75,14 @@ impl<'a,
      T : Add<Output=T> + Copy,
      N : ArrayLength<T>>
     
-    Add<& 'b Array<T,N>>
+    Add<& 'b Vector<T,N>>
     
-for & 'a Array<T,N>{
+for & 'a Vector<T,N>{
     
-    type Output = Array<T,N>;
+    type Output = Vector<T,N>;
 
-    fn add(self, other : & 'b Array<T,N>) -> Array<T,N>{
-        Array(GenericArray::<T,N>::
+    fn add(self, other : & 'b Vector<T,N>) -> Vector<T,N>{
+        Vector(GenericArray::<T,N>::
               generate(&|i| self.get()[i] + other.get()[i]))
     }
 
@@ -84,14 +93,14 @@ impl<'a,
      T : Sub<Output=T> + Copy,
      N : ArrayLength<T>>
     
-    Sub<& 'b Array<T,N>>
+    Sub<& 'b Vector<T,N>>
 
-for & 'a Array<T,N>{
+for & 'a Vector<T,N>{
     
-    type Output = Array<T,N>;
+    type Output = Vector<T,N>;
 
-    fn sub(self, other : & 'b Array<T,N>) -> Array<T,N>{
-        Array(GenericArray::<T,N>::
+    fn sub(self, other : & 'b Vector<T,N>) -> Vector<T,N>{
+        Vector(GenericArray::<T,N>::
               generate(&|i| self.get()[i] - other.get()[i]))
     } 
 }
@@ -103,13 +112,13 @@ impl<'a,
      T : Mul<Output=T> + Add<Output=T> + Copy + Zero,
      N : ArrayLength<T>>
     
-    Mul<& 'b Array<T,N>>
+    Mul<& 'b Vector<T,N>>
     
-for & 'a Array<T,N>{
+for & 'a Vector<T,N>{
     
     type Output = T;
 
-    fn mul(self, other : & 'b Array<T,N>) -> T{
+    fn mul(self, other : & 'b Vector<T,N>) -> T{
 
         let mut sum : T = <T as Zero>::zero();
         for i in 0.. <N>::to_i32(){
