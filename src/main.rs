@@ -17,6 +17,22 @@ fn process_input(win : *mut GlfwWindow){
     if glfw_get_key(win, GLFW_KEY_ESCAPE) == GLFW_PRESS{
         glfw_set_window_should_close(win, true);
     }
+    else if glfw_get_key(win, GLFW_KEY_TAB) == GLFW_PRESS{
+        //debug
+
+        let mut w : usize = 0;
+        let mut h : usize = 0;
+
+        glfw_get_window_size(win, &mut w, &mut h);
+
+        println!("({}, {})", w, h);
+
+        let mon = glfw_get_primary_monitor();
+        let vid_mode = glfw_get_video_mode(mon);
+        unsafe{
+            println!("{:?}", *vid_mode)
+        }
+    }
 }
 
 

@@ -7,6 +7,18 @@ use std::ptr;
 
 
 pub enum GlfwWindow{}
+pub enum GlfwMonitor{}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct GlfwVidMode{
+    width : c_int,
+    height : c_int,
+    red_bits : c_int,
+    green_bits : c_int,
+    blue_bits : c_int,
+    refresh_rate : c_int,
+}
 
 #[link(name = "GL")]
 #[link(name = "glfw")]
@@ -26,18 +38,43 @@ extern {
     fn glfwSetFramebufferSizeCallback(
         win : *mut GlfwWindow,
         callback : extern fn(* mut GlfwWindow, isize, isize));
+    fn glfwSetKeyCallback(win : *mut GlfwWindow,
+                          callback : extern fn (*mut GlfwWindow, isize, isize, isize, isize));
+    fn glfwSetMouseButtonCallback(win : *mut GlfwWindow, cb :
+                                  extern fn(*mut GlfwWindow, isize, isize, isize));
     fn glfwWindowShouldClose(win : *mut GlfwWindow) -> bool;
     fn glfwSwapBuffers(win : *mut GlfwWindow);
     fn glfwPollEvents();
     fn glfwGetKey(win : *mut GlfwWindow, key : usize) -> usize;
     fn glfwSetWindowShouldClose(win : *mut GlfwWindow, val : bool);
 
+    fn glfwGetWindowSize(win : *mut GlfwWindow, w : *mut usize, h : *mut usize);
+    fn glfwGetVideoMode(mon : *mut GlfwMonitor) -> *mut GlfwVidMode;
+    fn glfwGetPrimaryMonitor() -> *mut GlfwMonitor;
+    
     fn glClearColor(r : f32, g : f32, b : f32, a : f32);
     fn glClear(val : usize);
     fn glGetString(val : usize) -> *mut c_char;
 }
 
 
+pub fn glfw_get_window_size(win : *mut GlfwWindow, w : *mut usize, h : *mut usize){
+    unsafe{
+        glfwGetWindowSize(win, w, h);
+    }
+}
+
+pub fn glfw_get_video_mode(mon : *mut GlfwMonitor) -> *mut GlfwVidMode{
+    unsafe{
+        glfwGetVideoMode(mon)
+    }
+}
+
+pub fn glfw_get_primary_monitor() -> *mut GlfwMonitor{
+    unsafe{
+        glfwGetPrimaryMonitor()
+    }
+}
 
 pub fn glad_load_gl_loader(){
     unsafe{
@@ -92,6 +129,20 @@ pub fn glfw_set_framebuffer_size_callback(win : *mut GlfwWindow, cb:
                                           extern fn(*mut GlfwWindow, isize, isize)){
     unsafe {
         glfwSetFramebufferSizeCallback(win, cb);
+    }
+}
+
+pub fn glfw_set_key_callback(win : *mut GlfwWindow, cb:
+                             extern fn (*mut GlfwWindow, isize, isize, isize, isize)){
+    unsafe{
+        glfwSetKeyCallback(win, cb);
+    }
+}
+
+pub fn glfw_set_mouse_button_callback(win : *mut GlfwWindow, cb:
+                                      extern fn (*mut GlfwWindow, isize, isize, isize)){
+    unsafe{
+        glfwSetMouseButtonCallback(win, cb);
     }
 }
 
