@@ -74,6 +74,11 @@ impl Program{
         gl_uniform4f(self.get_uniform(name), val1, val2, val3, val4);
     }
 
+
+    pub fn set_float4x4(&self, name: &str, transpose: bool, mat: &f32){
+        self.enable();
+        gl_uniform_matrix4fv(self.get_uniform(name), transpose, mat)
+    }
     
 }
 
@@ -151,9 +156,9 @@ extern {
 }
 
 
-pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &const f32){
+pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &f32){
     unsafe{
-        gl_unifrom_matrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat)
+        glUniformMatrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat)
     }
 }
 
