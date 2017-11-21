@@ -145,8 +145,16 @@ extern {
     fn glUniform2f(loc: isize, val1: f32, val2: f32);
     fn glUniform3f(loc: isize, val1: f32, val2: f32, val3: f32);
     fn glUniform4f(loc: isize, val1: f32, val2: f32, val3: f32, val4: f32);
+    fn glUniformMatrix4fv(loc: isize, count: usize, transpose: usize, matrix_col_major: *const f32);
     fn glUseProgram(id: usize);
     fn glGetIntegerv(param: usize, out: *mut isize);
+}
+
+
+pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &const f32){
+    unsafe{
+        gl_unifrom_matrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat)
+    }
 }
 
 pub fn gl_get_integerv(param: usize, out: *mut isize){
