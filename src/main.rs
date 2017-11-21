@@ -3,14 +3,25 @@ extern crate generic_array;
 
 mod graphics;
 mod vector;
+mod graphics_util;
 
 use graphics::*;
 use std::ptr;
 use generic_array::*;
 use vector::*;
+use std::fs;
+use std::fs::File;
+use std::vec::*;
+use std::collections::HashMap;
+use graphics_util::*;
+use std::io::Read;
 
 extern fn framebuf_sz_cb(win : *mut GlfwWindow, w : isize, h : isize){
     gl_viewport(0,0,w,h);
+}
+
+extern fn error_cb(n : isize, er : &str){
+    println!("{}", er);
 }
 
 fn process_input(win : *mut GlfwWindow){
@@ -51,11 +62,48 @@ fn test_vectors(){
     println!("{}", mapped);
 }
 
+fn load_shaders_vf() -> HashMap<String, usize>{
+    let dir : &str = "./assets/shaders/";
+    let paths = fs::read_dir(dir).unwrap();
+    let mut map : HashMap<String, usize> = HashMap::new();
+    
+    for entry in paths{
+        let name : String = String::from(entry
+            .unwrap()
+            .path()
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap());
+
+        if !map.contains_key(&name){
+            let mut file_vert = File::open(
+                dir.to_string() + &name + ".vert").unwrap();
+            let mut source_vert = String::new();
+            file_vert.read_to_string(&mut source_vert).unwrap();
+
+            let mut file_frag = File::open(
+                dir.to_string() + &name + ".frag").unwrap();
+            let mut source_frag = String::new();
+            file_frag.read_to_string(&mut source_frag).unwrap();
+
+            let prog = create_program_vf(
+                &source_vert,
+                &source_frag);
+            
+            
+            map.insert(name, prog);
+        }
+    }
+    
+    map
+}
 
 fn main() {
     test_vectors();
    
-
+    //TODO check if it works
+    glfw_set_error_callback(error_cb);
     glfw_init();
     glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -74,6 +122,9 @@ fn main() {
     println!("Using GL version: {}", gl_get_string(GL_VERSION));
     
     glfw_set_framebuffer_size_callback(win, framebuf_sz_cb);
+
+    load_shaders_vf();
+    
 
     while !glfw_window_should_close(win){
 

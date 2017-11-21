@@ -3,8 +3,13 @@ use self::libc::*;
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::ptr;
+use std::str;
 
-
+pub struct WindowInfo{
+    pub width: usize,
+    pub height: usize,
+    pub handle: *mut GlfwWindow,
+}
 
 pub enum GlfwWindow{}
 pub enum GlfwMonitor{}
@@ -42,6 +47,7 @@ extern {
                           callback : extern fn (*mut GlfwWindow, isize, isize, isize, isize));
     fn glfwSetMouseButtonCallback(win : *mut GlfwWindow, cb :
                                   extern fn(*mut GlfwWindow, isize, isize, isize));
+    fn glfwSetErrorCallback(cb : extern fn(isize, &str));//TODO works with &str?
     fn glfwWindowShouldClose(win : *mut GlfwWindow) -> bool;
     fn glfwSwapBuffers(win : *mut GlfwWindow);
     fn glfwPollEvents();
@@ -51,12 +57,97 @@ extern {
     fn glfwGetWindowSize(win : *mut GlfwWindow, w : *mut usize, h : *mut usize);
     fn glfwGetVideoMode(mon : *mut GlfwMonitor) -> *mut GlfwVidMode;
     fn glfwGetPrimaryMonitor() -> *mut GlfwMonitor;
+    fn glfwSetWindowPos(win : *mut GlfwWindow, x : usize, y : usize);
+    fn glfwSwapInterval(mode : isize);
     
     fn glClearColor(r : f32, g : f32, b : f32, a : f32);
     fn glClear(val : usize);
     fn glGetString(val : usize) -> *mut c_char;
+
+    fn glCreateProgram()->usize;
+    fn glCreateShader(typee: usize)->usize;
+    fn glShaderSource(shader: usize, count: usize,
+                      sources: *const *const c_char,
+                      lens: *const usize);
+    fn glCompileShader(id: usize);
+    fn glGetShaderiv(id: usize, param: usize, res: *mut usize);
+    fn glGetShaderInfoLog(shader:usize, max_len: usize, len: *mut usize,
+                          info: *mut u8);
+    fn glAttachShader(program: usize, shader: usize);
+    fn glLinkProgram(program: usize);
+    fn glValidateProgram(program: usize);
 }
 
+
+pub fn gl_attach_shader(prog: usize, shader: usize){
+    unsafe{glAttachShader(prog, shader)}
+}
+
+pub fn gl_link_program(prog: usize){
+    unsafe{glLinkProgram(prog)}
+}
+
+pub fn gl_validate_program(prog: usize){
+    unsafe{glValidateProgram(prog)}
+}
+
+pub fn gl_get_shader_info_log(shader: usize) -> String{
+    unsafe{
+        const len: usize = 4096;//TODO placeholder
+        let mut info : Vec<u8> = Vec::with_capacity(len);
+        let mut len_ret : usize = 0;
+        glGetShaderInfoLog(shader, len, &mut len_ret, info.as_mut_ptr());
+        for i in info.iter(){
+            println!("{}", i)
+        }
+        info.set_len(len_ret);
+        let string = String::from_utf8(info).unwrap();
+
+        string
+        
+    }
+}
+
+pub fn gl_get_shaderiv(id: usize, param: usize, res: *mut usize){
+    unsafe{glGetShaderiv(id, param, res)}
+}
+
+pub fn gl_compile_shader(id:usize){
+    unsafe{glCompileShader(id)}
+}
+
+pub fn gl_shader_source(shader: usize, source: &str){
+    unsafe{
+        let one: usize = 1;
+        glShaderSource(shader, one, &(source.as_ptr() as *const i8), &source.len());
+    }
+}
+
+pub fn gl_create_shader(typee: usize)->usize{
+    unsafe{glCreateShader(typee)}
+}
+
+pub fn gl_create_program()->usize{
+    unsafe{glCreateProgram()}
+}
+
+pub fn glfw_set_error_callback(cb : extern fn(isize, &str)){
+    unsafe{
+        glfwSetErrorCallback(cb);
+    }
+}
+
+pub fn glfw_swap_interval(mode : isize){
+    unsafe{
+        glfwSwapInterval(mode);
+    }
+}
+
+pub fn glfw_set_window_pos(win : *mut GlfwWindow, x : usize, y : usize){
+    unsafe{
+        glfwSetWindowPos(win, x, y);
+    }
+}
 
 pub fn glfw_get_window_size(win : *mut GlfwWindow, w : *mut usize, h : *mut usize){
     unsafe{
