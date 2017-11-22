@@ -11,8 +11,12 @@
 ```
 sudo apt-get update
 sudo apt-get install curl
+sudo apt-get install libgc-dev
+sudo apt-get install libglfw3-dev
+sudo apt-get install git
 curl https://sh.rustup.rs -sSf | sh
-cd <Directory where you want compile Voxelized>
+
+cd <Directory where you want to compile Voxelized2D-Rust>
 git clone https://github.com/Russoul/Voxelized2D-Rust
 cd Voxelized2D-Rust
 ~/.cargo/bin/cargo run --release
