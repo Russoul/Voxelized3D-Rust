@@ -4,6 +4,7 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::ptr;
 use std::str;
+use std;
 
 pub struct WindowInfo{
     pub width: usize,
@@ -76,6 +77,80 @@ extern {
     fn glAttachShader(program: usize, shader: usize);
     fn glLinkProgram(program: usize);
     fn glValidateProgram(program: usize);
+
+    fn glGenVertexArrays(size: usize, arrs: *mut usize);
+    fn glGenBuffers(size: usize, bufs: *mut usize);
+    fn glDeleteVertexArrays(size: usize, arrs: *const usize);
+    fn glDeleteBuffers(size: usize, bufs: *const usize);
+
+    fn glBindVertexArray(ar: usize);
+    fn glBindBuffer(typee: usize, buf: usize);
+    fn glBufferData(target: usize, size: usize, data: *const c_void, usage: usize);
+    fn glDrawElements(mode: usize, count: usize, typee: usize, indices: usize);
+
+    fn glVertexAttribPointer(index: usize, size: usize, typee: usize, normalized: bool, stride: usize, offset: usize);
+    fn glEnableVertexAttribArray(index: usize);
+}
+
+pub fn gl_draw_elements(mode: usize, count: usize, typee: usize, indices: usize){
+    unsafe{glDrawElements(mode, count, typee, indices)};
+}
+
+pub fn gl_gen_vertex_arrays() -> usize{
+    unsafe{
+        let mut ar: usize = 0;
+        glGenVertexArrays(1, &mut ar);
+
+        ar
+    }
+}
+
+pub fn gl_gen_buffers() -> usize{
+    unsafe{
+        let mut buf: usize = 0;
+        glGenBuffers(1, &mut buf);
+
+        buf
+    }
+}
+
+pub fn gl_delete_vertex_arrays(ar: usize){
+    unsafe{
+        glDeleteVertexArrays(1, &ar)
+    }
+}
+
+pub fn gl_delete_buffers(buf : usize){
+    unsafe{
+        glDeleteBuffers(1, &buf)
+    }
+}
+
+pub fn gl_bind_vertex_array(ar: usize){
+    unsafe{
+        glBindVertexArray(ar);
+    }
+}
+
+pub fn gl_bind_buffer(typee:usize, buf: usize){
+    unsafe{
+        glBindBuffer(typee, buf);
+    }
+}
+
+
+pub fn gl_buffer_data<T>(target: usize, num : usize, data: &T, usage: usize){
+    unsafe{
+        glBufferData(target, std::mem::size_of::<T>() * num, std::mem::transmute::<&T,*const c_void>(data), usage);
+    }
+}
+
+pub fn gl_vertex_attrib_pointer(index: usize, size: usize, typee: usize, norm: bool, stride: usize, offset: usize){
+    unsafe{glVertexAttribPointer(index, size, typee, norm, stride, offset)}
+}
+
+pub fn gl_enable_vertex_attrib_array(index: usize){
+    unsafe{glEnableVertexAttribArray(index)}
 }
 
 
@@ -1173,6 +1248,7 @@ pub const  GL_MAX_COMBINED_TESS_CONTROL_UNIFORM_COMPONENTS : usize = 0x8E1E;
 pub const  GL_MAX_COMBINED_TESS_EVALUATION_UNIFORM_COMPONENTS : usize = 0x8E1F;
 pub const  GL_UNIFORM_BLOCK_REFERENCED_BY_TESS_CONTROL_SHADER : usize = 0x84F0;
 pub const  GL_UNIFORM_BLOCK_REFERENCED_BY_TESS_EVALUATION_SHADER : usize = 0x84F1;
+pub const  GL_STATIC_DRAW: usize = 0x88E4;
 pub const  GL_TESS_EVALUATION_SHADER : usize = 0x8E87;
 pub const  GL_TESS_CONTROL_SHADER : usize = 0x8E88;
 pub const  GL_TRANSFORM_FEEDBACK : usize = 0x8E22;
