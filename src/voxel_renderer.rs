@@ -7,15 +7,16 @@ use math::*;
 use std::collections::HashMap;
 
 
-struct RenderDataProvider{
 
+struct RenderDataProvider{
+    pre_render_state: Option<fn()>
 }
 
-struct RenderInfo<D: RenderVertFragData>{
-    renderer: RendererVertFrag<D>,
+struct RenderInfo<'a>{
+    renderer: &'a RendererVertFrag,
     provider: RenderDataProvider,
 }
 
-struct VoxelRenderer{
-    lifetime_one_draw_renderers: HashMap<usize, >
+struct VoxelRenderer<'a>{
+    lifetime_one_draw_renderers: HashMap<usize, RenderInfo<'a>>
 }

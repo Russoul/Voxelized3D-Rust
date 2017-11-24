@@ -145,7 +145,7 @@ fn main() {
 
     let mut renderer = render_vert_frag_def(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
 
-    add_tringle_color(&mut renderer.data, test_tr, Vector(arr!(f32;1.0,0.0,0.0)));
+    add_tringle_color(&mut renderer, test_tr, Vector(arr!(f32;1.0,0.0,0.0)));
     let shader = shaders.get(&String::from("color")).unwrap();
     shader.enable();
     let id_mat = [
@@ -156,7 +156,7 @@ fn main() {
     shader.set_float4x4("P", false, &id_mat);
     shader.set_float4x4("V", false, &id_mat);
 
-    (renderer.construct)(&mut renderer.data);
+    (&mut renderer as &mut RendererVertFrag).construct();
     
 
     while !glfw_window_should_close(win){
@@ -166,7 +166,7 @@ fn main() {
         gl_clear_color(0.2, 0.3, 0.3, 1.0);
         gl_clear(GL_COLOR_BUFFER_BIT);
 
-        (renderer.draw)(&mut renderer.data);
+        (&mut renderer as &mut RendererVertFrag).draw();
 
         glfw_swap_buffers(win);
         glfw_poll_events();
@@ -174,8 +174,8 @@ fn main() {
         check_for_gl_errors();
     }
 
-    (renderer.deconstruct)(&mut renderer.data);
-    (renderer.data.clear_pools)(&mut renderer.data);
+    (&mut renderer as &mut RendererVertFrag).deconstruct();
+    (&mut renderer as &mut RendererVertFrag).reset();
 
     glfw_terminate();
 }
