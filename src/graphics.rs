@@ -15,6 +15,74 @@ pub struct WindowInfo{
 pub enum GlfwWindow{}
 pub enum GlfwMonitor{}
 
+
+pub struct Program{
+    pub id: usize,
+    
+}
+
+impl Program{
+    pub fn get_uniform(&self, name: &str) -> isize{
+        gl_get_uniform_location(self.id, name)
+    }
+
+    pub fn is_in_use(&self) -> bool {
+        let mut cur_id = 0;
+        gl_get_integerv(GL_CURRENT_PROGRAM, &mut cur_id);
+        self.id == cur_id as usize
+    }
+
+    pub fn enable(&self){
+        if !self.is_in_use(){
+            gl_use_program(self.id);
+        }
+    }
+
+    pub fn disable(&self){
+        if self.is_in_use(){
+            gl_use_program(0);
+        }
+    }
+
+    pub fn set_bool(&self, name: &str, val: bool){
+        self.enable();
+        gl_uniform1i(self.get_uniform(name), if val {1} else {0});
+    }
+
+
+    pub fn set_int(&self, name: &str, val: isize){
+        self.enable();
+        gl_uniform1i(self.get_uniform(name), val);
+    }
+
+    pub fn set_float(&self, name: &str, val: f32){
+        self.enable();
+        gl_uniform1f(self.get_uniform(name), val);
+    }
+
+    pub fn set_float2(&self, name: &str, val1: f32, val2: f32){
+        self.enable();
+        gl_uniform2f(self.get_uniform(name), val1, val2);
+    }
+
+    pub fn set_float3(&self, name: &str, val1: f32, val2: f32, val3: f32){
+        self.enable();
+        gl_uniform3f(self.get_uniform(name), val1, val2, val3);
+    }
+
+    pub fn set_float4(&self, name: &str, val1: f32, val2: f32, val3: f32, val4: f32){
+        self.enable();
+        gl_uniform4f(self.get_uniform(name), val1, val2, val3, val4);
+    }
+
+
+    pub fn set_float4x4(&self, name: &str, transpose: bool, mat: &f32){
+        self.enable();
+        gl_uniform_matrix4fv(self.get_uniform(name), transpose, mat)
+    }
+    
+}
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct GlfwVidMode{
@@ -90,6 +158,68 @@ extern {
 
     fn glVertexAttribPointer(index: usize, size: usize, typee: usize, normalized: bool, stride: usize, offset: usize);
     fn glEnableVertexAttribArray(index: usize);
+
+
+    fn glGetUniformLocation(program: usize, name: &str)->isize;
+    fn glUniform1i(loc: isize, val: isize);
+    fn glUniform1f(loc: isize, val: f32);
+    fn glUniform2f(loc: isize, val1: f32, val2: f32);
+    fn glUniform3f(loc: isize, val1: f32, val2: f32, val3: f32);
+    fn glUniform4f(loc: isize, val1: f32, val2: f32, val3: f32, val4: f32);
+    fn glUniformMatrix4fv(loc: isize, count: usize, transpose: usize, matrix_col_major: *const f32);
+    fn glUseProgram(id: usize);
+    fn glGetIntegerv(param: usize, out: *mut isize);
+}
+
+pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &f32){
+    unsafe{
+        glUniformMatrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat)
+    }
+}
+
+pub fn gl_get_integerv(param: usize, out: *mut isize){
+    unsafe{glGetIntegerv(param, out)}
+}
+
+pub fn gl_use_program(id: usize){
+    unsafe{
+        glUseProgram(id)
+    }
+}
+
+pub fn gl_uniform1i(loc: isize, val: isize){
+    unsafe{
+        glUniform1i(loc, val)
+    }
+}
+
+pub fn gl_uniform1f(loc: isize, val: f32){
+    unsafe{
+        glUniform1f(loc, val)
+    }
+}
+
+pub fn gl_uniform2f(loc: isize, val1: f32, val2: f32){
+    unsafe{
+        glUniform2f(loc, val1, val2)
+    }
+}
+
+pub fn gl_uniform3f(loc: isize, val1: f32, val2: f32, val3: f32){
+    unsafe{
+        glUniform3f(loc, val1, val2, val3)
+    }
+}
+
+pub fn gl_uniform4f(loc: isize, val1: f32, val2: f32, val3: f32, val4: f32){
+    unsafe{
+        glUniform4f(loc, val1, val2, val3, val4)
+    }
+}
+
+
+pub fn gl_get_uniform_location(program: usize, name : &str)->isize{
+    unsafe{glGetUniformLocation(program, name)}
 }
 
 pub fn gl_draw_elements(mode: usize, count: usize, typee: usize, indices: usize){
