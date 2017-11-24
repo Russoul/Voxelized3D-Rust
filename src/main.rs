@@ -4,6 +4,8 @@ extern crate generic_array;
 mod graphics;
 mod vector;
 mod graphics_util;
+mod renderer;
+mod math;
 
 use graphics::*;
 use std::ptr;
@@ -15,6 +17,8 @@ use std::vec::*;
 use std::collections::HashMap;
 use graphics_util::*;
 use std::io::Read;
+use renderer::*;
+use math::*;
 
 extern fn framebuf_sz_cb(win : *mut GlfwWindow, w : isize, h : isize){
     gl_viewport(0,0,w,h);
@@ -123,7 +127,17 @@ fn main() {
     
     glfw_set_framebuffer_size_callback(win, framebuf_sz_cb);
 
-    load_shaders_vf();
+    let shaders = load_shaders_vf();
+
+    let test_tr = Triangle{p1: Vector(arr![f32;-1.0,-1.0, 0.0]),
+                           p2: Vector(arr![f32;1.0, -1.0, 0.0]),
+                           p3: Vector(arr![f32;0.0, 1.0, 0.0])};
+
+    let renderer = render_vert_frag_def(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
+
+    let shader = shaders.get(&String::from("color")).unwrap();
+
+    //TODO shader struct, util functions on shader
     
 
     while !glfw_window_should_close(win){
