@@ -143,7 +143,7 @@ fn main() {
                            p2: Vector(arr![f32;1.0, -1.0, 0.0]),
                            p3: Vector(arr![f32;0.0, 1.0, 0.0])};
 
-    let mut renderer = render_vert_frag_def(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
+    let mut renderer = RendererVertFragDef::make(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
 
     add_tringle_color(&mut renderer, test_tr, Vector(arr!(f32;1.0,0.0,0.0)));
     let shader = shaders.get(&String::from("color")).unwrap();

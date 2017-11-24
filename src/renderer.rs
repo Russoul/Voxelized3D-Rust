@@ -9,7 +9,6 @@ use vector::*;
 use math::*;
 use std::fmt::Debug;
 
-//TODO implement dynamic dispatch
 pub trait RendererVertFrag{
     fn render_mode       (&self) -> usize;
     fn shader_name       (&self) -> String;
@@ -36,39 +35,6 @@ pub struct RendererVertFragDef{
 
 }
 
-
-pub fn add_tringle_color(dat: &mut RendererVertFragDef, tr: Triangle<f32,U3>, color: Vector<f32,U3>){
-    dat.vertex_pool.push(tr.p1.0[0]);
-    dat.vertex_pool.push(tr.p1.0[1]);
-    dat.vertex_pool.push(tr.p1.0[2]);
-
-    dat.vertex_pool.push(color.0[0]);
-    dat.vertex_pool.push(color.0[1]);
-    dat.vertex_pool.push(color.0[2]);
-
-    dat.vertex_pool.push(tr.p2.0[0]);
-    dat.vertex_pool.push(tr.p2.0[1]);
-    dat.vertex_pool.push(tr.p2.0[2]);
-
-    dat.vertex_pool.push(color.0[0]);
-    dat.vertex_pool.push(color.0[1]);
-    dat.vertex_pool.push(color.0[2]);
-
-    dat.vertex_pool.push(tr.p3.0[0]);
-    dat.vertex_pool.push(tr.p3.0[1]);
-    dat.vertex_pool.push(tr.p3.0[2]);
-
-    dat.vertex_pool.push(color.0[0]);
-    dat.vertex_pool.push(color.0[1]);
-    dat.vertex_pool.push(color.0[2]);
-
-    dat.index_pool.push(dat.vertex_count + 0);
-    dat.index_pool.push(dat.vertex_count + 1);
-    dat.index_pool.push(dat.vertex_count + 2);
-
-
-    dat.vertex_count += 3;
-}
 
 pub const VERTEX_SIZE_COLOR : usize = 6;
 
@@ -158,23 +124,57 @@ impl RendererVertFrag for RendererVertFragDef{
     }
 }
 
-pub fn render_vert_frag_def(vs: usize,
-                            set_attrib_ptrs : fn (&mut RendererVertFragDef),
-                            render_mode: usize,
-                            shader_name: String)
-                            -> RendererVertFragDef{
-    RendererVertFragDef{
-        vertex_size: vs,
-        vertex_pool: Vec::new(),
-        index_pool: Vec::new(),
-        vertex_count: 0,
-        VBO: 0,
-        VAO: 0,
-        EBO: 0,
-        constructed:false,
-        render_mode,
-        shader_name,
-        set_attrib_ptrs
+impl RendererVertFragDef{
+    pub fn make(vs: usize,
+            set_attrib_ptrs : fn (&mut RendererVertFragDef),
+            render_mode: usize,
+            shader_name: String) -> RendererVertFragDef{
+        RendererVertFragDef{
+            vertex_size: vs,
+            vertex_pool: Vec::new(),
+            index_pool: Vec::new(),
+            vertex_count: 0,
+            VBO: 0,
+            VAO: 0,
+            EBO: 0,
+            constructed:false,
+            render_mode,
+            shader_name,
+            set_attrib_ptrs
+        }
     }
-
 }
+
+pub fn add_tringle_color(dat: &mut RendererVertFragDef, tr: Triangle<f32,U3>, color: Vector<f32,U3>){
+    dat.vertex_pool.push(tr.p1.0[0]);
+    dat.vertex_pool.push(tr.p1.0[1]);
+    dat.vertex_pool.push(tr.p1.0[2]);
+
+    dat.vertex_pool.push(color.0[0]);
+    dat.vertex_pool.push(color.0[1]);
+    dat.vertex_pool.push(color.0[2]);
+
+    dat.vertex_pool.push(tr.p2.0[0]);
+    dat.vertex_pool.push(tr.p2.0[1]);
+    dat.vertex_pool.push(tr.p2.0[2]);
+
+    dat.vertex_pool.push(color.0[0]);
+    dat.vertex_pool.push(color.0[1]);
+    dat.vertex_pool.push(color.0[2]);
+
+    dat.vertex_pool.push(tr.p3.0[0]);
+    dat.vertex_pool.push(tr.p3.0[1]);
+    dat.vertex_pool.push(tr.p3.0[2]);
+
+    dat.vertex_pool.push(color.0[0]);
+    dat.vertex_pool.push(color.0[1]);
+    dat.vertex_pool.push(color.0[2]);
+
+    dat.index_pool.push(dat.vertex_count + 0);
+    dat.index_pool.push(dat.vertex_count + 1);
+    dat.index_pool.push(dat.vertex_count + 2);
+
+
+    dat.vertex_count += 3;
+}
+
