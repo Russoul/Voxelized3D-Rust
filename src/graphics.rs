@@ -9,7 +9,7 @@ use std;
 pub struct WindowInfo{
     pub width: usize,
     pub height: usize,
-    pub handle: *mut GlfwWindow,
+    pub handle: *const GlfwWindow,
 }
 
 pub enum GlfwWindow{}
