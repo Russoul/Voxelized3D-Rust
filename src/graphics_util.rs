@@ -55,5 +55,9 @@ Error:
     gl_attach_shader(prog, frag_id);
     gl_link_program(prog);
     gl_validate_program(prog);
+
+    gl_delete_shader(vert_id);
+    gl_delete_shader(frag_id);
+
     prog
 }

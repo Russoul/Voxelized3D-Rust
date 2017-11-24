@@ -7,24 +7,25 @@ use graphics::*;
 use self::libc::*;
 use vector::*;
 use math::*;
+use std::fmt::Debug;
 
 pub struct RendererVertFrag<D : RendererVertFragData>{
-    data            : D,
+    pub data            : D,
     render_mode     : fn (&mut D) -> usize,
     set_attrib_ptrs : fn (&mut D),
-    construct       : fn (&mut D) -> bool,
-    deconstruct     : fn (&mut D) -> bool,
-    draw            : fn (&mut D) -> bool,
-    shader_name     : fn (&mut D) -> String,
+    pub construct       : fn (&mut D) -> bool,
+    pub deconstruct     : fn (&mut D) -> bool,
+    pub draw            : fn (&mut D) -> bool,
+    pub shader_name     : fn (&mut D) -> String,
 }
 
 pub trait RendererVertFragData{}
 
 pub struct RendererVertFragDataDef{
-    vertex_size: usize,
-    vertex_pool: Vec<f32>,
-    index_pool: Vec<usize>,
-    vertex_count: usize,
+    pub vertex_size: usize,
+    pub vertex_pool: Vec<f32>,
+    pub index_pool: Vec<u32>,
+    pub vertex_count: u32,
     VBO: usize,
     VAO: usize,
     EBO: usize,
@@ -65,9 +66,6 @@ pub fn add_tringle_color(dat: &mut RendererVertFragDataDef, tr: Triangle<f32,U3>
     dat.index_pool.push(dat.vertex_count + 1);
     dat.index_pool.push(dat.vertex_count + 2);
 
-    dat.index_pool.push(dat.vertex_count + 2);
-    dat.index_pool.push(dat.vertex_count + 3);
-    dat.index_pool.push(dat.vertex_count + 0);
 
     dat.vertex_count += 3;
 }
@@ -82,6 +80,7 @@ pub fn set_attrib_ptrs_color(dat: &mut RendererVertFragDataDef){
     gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
+
 }
 
 impl RendererVertFragData for RendererVertFragDataDef{}
@@ -106,11 +105,12 @@ pub fn render_vert_frag_def(vs: usize,
     };
 
     fn construct(dat: &mut RendererVertFragDataDef) -> bool {
-        if(dat.constructed) {return false;};
+        if dat.constructed {return false;};
 
         dat.VAO = gl_gen_vertex_arrays();
         dat.VBO = gl_gen_buffers();
         dat.EBO = gl_gen_buffers();
+
 
         gl_bind_vertex_array(dat.VAO);
 
@@ -118,12 +118,12 @@ pub fn render_vert_frag_def(vs: usize,
         
         gl_buffer_data(GL_ARRAY_BUFFER,
                        dat.vertex_pool.len(),
-                       &dat.vertex_pool.as_slice()[0],
+                       dat.vertex_pool.as_slice(),
                        GL_STATIC_DRAW);
 
         gl_bind_buffer(GL_ELEMENT_ARRAY_BUFFER, dat.EBO);
         gl_buffer_data(GL_ELEMENT_ARRAY_BUFFER, dat.index_pool.len(),
-                       &dat.index_pool.as_slice()[0],
+                       dat.index_pool.as_slice(),
                        GL_STATIC_DRAW
         );
 
@@ -138,7 +138,7 @@ pub fn render_vert_frag_def(vs: usize,
     };
 
     fn deconstruct(dat: &mut RendererVertFragDataDef) -> bool {
-        if(!dat.constructed){return false;};
+        if !dat.constructed {return false;};
 
         gl_delete_vertex_arrays(dat.VAO);
         gl_delete_buffers(dat.VBO);

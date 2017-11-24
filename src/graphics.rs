@@ -76,7 +76,7 @@ impl Program{
     }
 
 
-    pub fn set_float4x4(&self, name: &str, transpose: bool, mat: &f32){
+    pub fn set_float4x4(&self, name: &str, transpose: bool, mat: &[f32]){
         self.enable();
         gl_uniform_matrix4fv(self.get_uniform(name), transpose, mat)
     }
@@ -145,6 +145,7 @@ extern {
     fn glAttachShader(program: usize, shader: usize);
     fn glLinkProgram(program: usize);
     fn glValidateProgram(program: usize);
+    fn glDeleteShader(shader: usize);
 
 
     fn glGenVertexArrays(size: usize, arrs: *mut usize);
@@ -161,7 +162,7 @@ extern {
     fn glEnableVertexAttribArray(index: usize);
 
 
-    fn glGetUniformLocation(program: usize, name: &str)->isize;
+    fn glGetUniformLocation(program: usize, name: *const c_char)->isize;
     fn glUniform1i(loc: isize, val: isize);
     fn glUniform1f(loc: isize, val: f32);
     fn glUniform2f(loc: isize, val1: f32, val2: f32);
@@ -170,12 +171,21 @@ extern {
     fn glUniformMatrix4fv(loc: isize, count: usize, transpose: usize, matrix_col_major: *const f32);
     fn glUseProgram(id: usize);
     fn glGetIntegerv(param: usize, out: *mut isize);
+    fn glGetError() -> usize;
 
 }
 
-pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &f32){
+pub fn gl_delete_shader(shader: usize){
+    unsafe{glDeleteShader(shader)}
+}
+
+pub fn gl_get_error() -> usize{
+    unsafe{glGetError()}
+}
+
+pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &[f32]){
     unsafe{
-        glUniformMatrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat)
+        glUniformMatrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat.as_ptr())
     }
 }
 
@@ -185,7 +195,7 @@ pub fn gl_get_integerv(param: usize, out: *mut isize){
 
 pub fn gl_use_program(id: usize){
     unsafe{
-        glUseProgram(id)
+        glUseProgram(id);
     }
 }
 
@@ -219,10 +229,6 @@ pub fn gl_uniform4f(loc: isize, val1: f32, val2: f32, val3: f32, val4: f32){
     }
 }
 
-
-pub fn gl_get_uniform_location(program: usize, name : &str)->isize{
-    unsafe{glGetUniformLocation(program, name)}
-}
 
 pub fn gl_draw_elements(mode: usize, count: usize, typee: usize, indices: usize){
     unsafe{glDrawElements(mode, count, typee, indices)};
@@ -270,10 +276,10 @@ pub fn gl_bind_buffer(typee:usize, buf: usize){
     }
 }
 
-
-pub fn gl_buffer_data<T>(target: usize, num : usize, data: &T, usage: usize){
+//be precise about 'T' type argument
+pub fn gl_buffer_data<T>(target: usize, num : usize, data: &[T], usage: usize){
     unsafe{
-        glBufferData(target, std::mem::size_of::<T>() * num, std::mem::transmute::<&T,*const c_void>(data), usage);
+        glBufferData(target, std::mem::size_of::<T>() * num, std::mem::transmute::<*const T,*const c_void>(data.as_ptr()), usage);
     }
 }
 
@@ -285,56 +291,8 @@ pub fn gl_enable_vertex_attrib_array(index: usize){
     unsafe{glEnableVertexAttribArray(index)}
 }
 
-
-pub fn gl_uniform_matrix4fv(loc: isize, transpose: bool, mat: &f32){
-    unsafe{
-        glUniformMatrix4fv(loc, 1, if transpose {GL_TRUE}else{GL_FALSE}, mat)
-    }
-}
-
-pub fn gl_get_integerv(param: usize, out: *mut isize){
-    unsafe{glGetIntegerv(param, out)}
-}
-
-pub fn gl_use_program(id: usize){
-    unsafe{
-        glUseProgram(id)
-    }
-}
-
-pub fn gl_uniform1i(loc: isize, val: isize){
-    unsafe{
-        glUniform1i(loc, val)
-    }
-}
-
-pub fn gl_uniform1f(loc: isize, val: f32){
-    unsafe{
-        glUniform1f(loc, val)
-    }
-}
-
-pub fn gl_uniform2f(loc: isize, val1: f32, val2: f32){
-    unsafe{
-        glUniform2f(loc, val1, val2)
-    }
-}
-
-pub fn gl_uniform3f(loc: isize, val1: f32, val2: f32, val3: f32){
-    unsafe{
-        glUniform3f(loc, val1, val2, val3)
-    }
-}
-
-pub fn gl_uniform4f(loc: isize, val1: f32, val2: f32, val3: f32, val4: f32){
-    unsafe{
-        glUniform4f(loc, val1, val2, val3, val4)
-    }
-}
-
-
 pub fn gl_get_uniform_location(program: usize, name : &str)->isize{
-    unsafe{glGetUniformLocation(program, name)}
+    unsafe{glGetUniformLocation(program, CString::new(name).unwrap().as_ptr())}
 }
 
 pub fn gl_attach_shader(prog: usize, shader: usize){

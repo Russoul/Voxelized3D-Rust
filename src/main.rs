@@ -28,6 +28,15 @@ extern fn error_cb(n : isize, er : &str){
     println!("{}", er);
 }
 
+fn check_for_gl_errors(){
+    let mut er: usize = gl_get_error();
+
+    while er != GL_NO_ERROR{
+        eprintln!("GL error: {}", er);
+        er = gl_get_error();
+    }
+}
+
 fn process_input(win : *mut GlfwWindow){
     if glfw_get_key(win, GLFW_KEY_ESCAPE) == GLFW_PRESS{
         glfw_set_window_should_close(win, true);
@@ -66,10 +75,10 @@ fn test_vectors(){
     println!("{}", mapped);
 }
 
-fn load_shaders_vf() -> HashMap<String, usize>{
+fn load_shaders_vf() -> HashMap<String, Program>{
     let dir : &str = "./assets/shaders/";
     let paths = fs::read_dir(dir).unwrap();
-    let mut map : HashMap<String, usize> = HashMap::new();
+    let mut map : HashMap<String, Program> = HashMap::new();
     
     for entry in paths{
         let name : String = String::from(entry
@@ -96,7 +105,7 @@ fn load_shaders_vf() -> HashMap<String, usize>{
                 &source_frag);
             
             
-            map.insert(name, prog);
+            map.insert(name, Program{id: prog});
         }
     }
     
@@ -133,11 +142,21 @@ fn main() {
                            p2: Vector(arr![f32;1.0, -1.0, 0.0]),
                            p3: Vector(arr![f32;0.0, 1.0, 0.0])};
 
-    let renderer = render_vert_frag_def(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
+    let mut renderer = render_vert_frag_def(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
 
+    add_tringle_color(&mut renderer.data, test_tr, Vector(arr!(f32;1.0,0.0,0.0)));
     let shader = shaders.get(&String::from("color")).unwrap();
+    shader.enable();
+    let id_mat = [
+        1.0,0.0,0.0,0.0,
+        0.0,1.0,0.0,0.0,
+        0.0,0.0,1.0,0.0,
+        0.0,0.0,0.0,1.0];
+    shader.set_float4x4("P", false, &id_mat);
+    shader.set_float4x4("V", false, &id_mat);
 
-    //TODO shader struct, util functions on shader
+    //println!("{:?}", &renderer.data.vertex_pool);
+    (renderer.construct)(&mut renderer.data);
     
 
     while !glfw_window_should_close(win){
@@ -146,10 +165,16 @@ fn main() {
 
         gl_clear_color(0.2, 0.3, 0.3, 1.0);
         gl_clear(GL_COLOR_BUFFER_BIT);
-        
+
+        (renderer.draw)(&mut renderer.data);
+
         glfw_swap_buffers(win);
         glfw_poll_events();
+
+        check_for_gl_errors();
     }
+
+    (renderer.deconstruct)(&mut renderer.data);
 
     glfw_terminate();
 }
