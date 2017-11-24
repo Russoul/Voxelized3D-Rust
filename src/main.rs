@@ -6,6 +6,7 @@ mod vector;
 mod graphics_util;
 mod renderer;
 mod math;
+mod voxel_renderer;
 
 use graphics::*;
 use std::ptr;
@@ -61,7 +62,7 @@ fn process_input(win : *mut GlfwWindow){
 
 
 fn test_vectors(){
-    let ar1 = Vector::new(arr![usize;1,2,3,4]);
+    let ar1 = Vector::from(arr![usize;1,2,3,4]);
     let ar2 = ar1.clone();
     ar1.print();
 
@@ -71,7 +72,7 @@ fn test_vectors(){
     let ar4 = &ar1 * &ar1;
     println!("{}", ar4);
     println!("{}", ar3);
-    let mapped = Vector::new(ar1.get().map(|x| x + 1));
+    let mapped = Vector::from(ar1.get().map(|x| x + 1));
     println!("{}", mapped);
 }
 
@@ -155,7 +156,6 @@ fn main() {
     shader.set_float4x4("P", false, &id_mat);
     shader.set_float4x4("V", false, &id_mat);
 
-    //println!("{:?}", &renderer.data.vertex_pool);
     (renderer.construct)(&mut renderer.data);
     
 
@@ -175,6 +175,7 @@ fn main() {
     }
 
     (renderer.deconstruct)(&mut renderer.data);
+    (renderer.data.clear_pools)(&mut renderer.data);
 
     glfw_terminate();
 }

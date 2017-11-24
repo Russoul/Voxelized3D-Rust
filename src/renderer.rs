@@ -9,6 +9,7 @@ use vector::*;
 use math::*;
 use std::fmt::Debug;
 
+//TODO implement dynamic dispatch
 pub struct RendererVertFrag<D : RendererVertFragData>{
     pub data            : D,
     render_mode     : fn (&mut D) -> usize,
@@ -26,13 +27,14 @@ pub struct RendererVertFragDataDef{
     pub vertex_pool: Vec<f32>,
     pub index_pool: Vec<u32>,
     pub vertex_count: u32,
-    VBO: usize,
-    VAO: usize,
-    EBO: usize,
-    constructed: bool,
-    render_mode: usize,
-    shader_name: String,
-    set_attrib_ptrs: fn(&mut RendererVertFragDataDef),
+    pub VBO: usize,
+    pub VAO: usize,
+    pub EBO: usize,
+    pub constructed: bool,
+    pub render_mode: usize,
+    pub shader_name: String,
+    pub set_attrib_ptrs: fn(&mut RendererVertFragDataDef),
+    pub clear_pools: fn(&mut RendererVertFragDataDef),
 
 }
 
@@ -90,6 +92,13 @@ pub fn render_vert_frag_def(vs: usize,
                             render_mode: usize,
                             shader_name: String)
                             -> RendererVertFrag<RendererVertFragDataDef>{
+
+    fn clear_pools(dat: &mut RendererVertFragDataDef){
+        dat.vertex_pool.clear();
+        dat.index_pool.clear();
+        dat.vertex_count = 0;
+    };
+
     let mut dat = RendererVertFragDataDef{
         vertex_size: vs,
         vertex_pool: Vec::new(),
@@ -101,7 +110,8 @@ pub fn render_vert_frag_def(vs: usize,
         constructed:false,
         render_mode,
         shader_name,
-        set_attrib_ptrs
+        set_attrib_ptrs,
+        clear_pools
     };
 
     fn construct(dat: &mut RendererVertFragDataDef) -> bool {
@@ -149,11 +159,7 @@ pub fn render_vert_frag_def(vs: usize,
         true
     };
 
-    fn clear_pools(dat: &mut RendererVertFragDataDef){
-        dat.vertex_pool.clear();
-        dat.index_pool.clear();
-        dat.vertex_count = 0;
-    };
+
     
 
     fn draw(dat: &mut RendererVertFragDataDef) -> bool{

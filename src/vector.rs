@@ -8,7 +8,12 @@ use typenum::*;
 use std::ops::*;
 use std::num::*;
 use self::num::Zero;
-
+use std::cmp::*;
+use std::fmt;
+use std::fmt::Debug;
+use std::borrow::{Borrow, BorrowMut};
+use std::convert::{AsMut, AsRef};
+use std::hash::*;
 
 //newtype for GenericArray, zero runtime cost
 //'Vector' is mathematical vector
@@ -22,10 +27,13 @@ pub struct Vector<T,N : ArrayLength<T>>(pub GenericArray<T,N>);
     }
 }*/
 
-impl<T, N : ArrayLength<T>> Vector<T,N>{
-    pub fn new(a : GenericArray<T,N>) -> Vector<T,N>{
-        Vector(a)
+impl <T, N : ArrayLength<T>> From<GenericArray<T,N>> for Vector<T,N>{
+    fn from(ar: GenericArray<T,N>) -> Self {
+        Vector(ar)
     }
+}
+
+impl<T, N : ArrayLength<T>> Vector<T,N>{
 
     pub fn get(&self) -> &GenericArray<T,N>{
         &self.0
@@ -36,11 +44,32 @@ impl<T, N : ArrayLength<T>> Vector<T,N>{
 impl<T : Clone,N : ArrayLength<T>> Clone for Vector<T,N>{
 
     fn clone(&self) -> Vector<T,N>{
-        Vector::new((&self.0).clone())
+        Vector::from((&self.0).clone())
+    }
+}
+
+impl<T: PartialEq, N> PartialEq for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
+impl<T: PartialOrd, N> PartialOrd for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn partial_cmp(&self, other: &Vector<T, N>) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
     }
 }
 
 impl<T : Display, N : ArrayLength<T>> Display for Vector<T,N>{
+
     fn fmt(&self, f : &mut Formatter) -> Result{
         let _ = write!(f, "[");
         for i in 0..N::to_usize(){
@@ -52,6 +81,71 @@ impl<T : Display, N : ArrayLength<T>> Display for Vector<T,N>{
             }
         }
         write!(f, "]")
+    }
+}
+
+impl<T: Debug, N> Debug for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+
+    #[inline]
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.0[..].fmt(fmt)
+    }
+}
+
+impl<T, N> Borrow<[T]> for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn borrow(&self) -> &[T] {
+        &self.0[..]
+    }
+}
+
+
+impl<T, N> BorrowMut<[T]> for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut [T] {
+        &mut self.0[..]
+    }
+}
+
+impl<T, N> AsRef<[T]> for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn as_ref(&self) -> &[T] {
+        &self.0[..]
+    }
+}
+
+impl<T, N> AsMut<[T]> for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn as_mut(&mut self) -> &mut [T] {
+        &mut self.0[..]
+    }
+}
+
+impl<T: Hash, N> Hash for Vector<T, N>
+    where
+        N: ArrayLength<T>,
+{
+    #[inline]
+    fn hash<H>(&self, state: &mut H)
+        where
+            H: Hasher,
+    {
+        self.0.hash(state)
     }
 }
 
