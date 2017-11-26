@@ -7,6 +7,7 @@ use math::*;
 use std::collections::HashMap;
 use std::error::Error;
 use std::hash::{Hash, Hasher};
+use std::rc::*;
 
 pub enum RenderLifetime{
     Manual,
@@ -48,27 +49,28 @@ impl Hash for RenderID{
     }
 }
 
-struct RenderDataProvider{
-    pre_render_state: Option<fn()->()>,
-    post_render_state: Option<fn()->()>,
-    shader_data: Option<Box<FnOnce(&Program, WindowInfo)->()>>,
+pub struct RenderDataProvider{
+    pub pre_render_state: Option<Box<Fn()->()>>,
+    pub post_render_state: Option<Box<Fn()->()>>,
+    pub shader_data: Option<Box<Fn(&Program, &WindowInfo)->()>>,
 }
 
-struct RenderInfo<'a>{
-    renderer: &'a RendererVertFrag,
-    provider: RenderDataProvider,
+pub struct RenderInfo{
+    pub renderer: Box<RendererVertFrag>,
+    pub provider: RenderDataProvider,
 }
 
-struct VoxelRenderer<'a>{
-    lifetime_one_draw_renderers: HashMap<RenderID, RenderInfo<'a>>,
-    lifetime_manual_renderers: HashMap<RenderID, RenderInfo<'a>>,
+pub struct VoxelRenderer<'a>{
+    lifetime_one_draw_renderers: HashMap<RenderID, RenderInfo>,
+    pub lifetime_manual_renderers: HashMap<RenderID, RenderInfo>,
 
     shaders: &'a HashMap<String, Program>,
     render_id_counter: usize,
 }
 
+
 impl<'a> VoxelRenderer<'a>{
-    fn new(shaders: &'a HashMap<String, Program>) -> VoxelRenderer<'a>{
+    pub fn new(shaders: &'a HashMap<String, Program>) -> VoxelRenderer<'a>{
         VoxelRenderer{
             lifetime_one_draw_renderers: HashMap::new(),
             lifetime_manual_renderers: HashMap::new(),
@@ -77,12 +79,97 @@ impl<'a> VoxelRenderer<'a>{
         }
     }
 
-    fn push(&self, life: RenderLifetime, trans: RenderTransform, mut renderer: RenderInfo<'a>) -> Result<RenderID, &'static str>{
+    pub fn draw(&mut self, win_info: &WindowInfo){
+        for render_info in self.lifetime_one_draw_renderers.values_mut(){
+            let shader_name = &render_info.renderer.shader_name();
+            let shader = self.shaders.get(shader_name).unwrap();
+            shader.enable();
+
+            if render_info.provider.pre_render_state.is_some(){
+                let ref opt = render_info.provider.pre_render_state;
+                match opt{
+                    &Some(ref x) => (*x)(),
+                    _ => (),
+                }
+
+            }
+
+            if render_info.provider.shader_data.is_some(){
+                let ref opt = render_info.provider.shader_data;
+                match opt{
+                    &Some(ref x) => (*x)(shader, win_info),
+                    _ => (),
+                }
+
+            }
+
+
+            render_info.renderer.construct();
+            render_info.renderer.draw();
+            render_info.renderer.deconstruct();
+
+
+            if render_info.provider.post_render_state.is_some(){
+                let ref opt = render_info.provider.post_render_state;
+                match opt{
+                    &Some(ref x) => (*x)(),
+                    _ => (),
+                }
+
+            }
+
+            shader.disable();
+
+        }
+
+
+        for render_info in self.lifetime_manual_renderers.values_mut(){
+            let shader_name = &render_info.renderer.shader_name();
+            let shader = self.shaders.get(shader_name).unwrap();
+            shader.enable();
+
+            if render_info.provider.pre_render_state.is_some(){
+                let ref opt = render_info.provider.pre_render_state;
+                match opt{
+                    &Some(ref x) => (*x)(),
+                    _ => (),
+                }
+
+            }
+
+            if render_info.provider.shader_data.is_some(){
+                let ref opt = render_info.provider.shader_data;
+                match opt{
+                    &Some(ref x) => (*x)(shader, win_info),
+                    _ => (),
+                }
+
+            }
+
+            //manual construction and deconstruction !
+            render_info.renderer.draw();
+
+
+            if render_info.provider.post_render_state.is_some(){
+                let ref opt = render_info.provider.post_render_state;
+                match opt{
+                    &Some(ref x) => (*x)(),
+                    _ => (),
+                }
+
+            }
+
+            shader.disable();
+
+        }
+    }
+
+    pub fn push(&mut self, life: RenderLifetime, trans: RenderTransform, mut renderer: RenderInfo) -> Result<RenderID, &'static str>{
         if !self.shaders.contains_key(&renderer.renderer.shader_name()) {return Err("error: shader not found")}
 
 
 
-        fn provide_def(shader: &Program, win: WindowInfo){ //shader will be already enabled
+        fn provide_def(shader: &Program, win: &WindowInfo){ //shader will be already enabled
             shader.set_float4x4("P",  false, &[
                 1.0,0.0,0.0,0.0,
                 0.0,1.0,0.0,0.0,
@@ -95,7 +182,7 @@ impl<'a> VoxelRenderer<'a>{
                 0.0,0.0,0.0,1.0]);
         }
 
-        fn provide_ui(shader: &Program, win: WindowInfo){ //shader will be already enabled
+        fn provide_ui(shader: &Program, win: &WindowInfo){ //shader will be already enabled
             shader.set_float4x4("P",  false, &ortho(
                                                    0.0,
                                                    win.width as f32,
@@ -118,12 +205,12 @@ impl<'a> VoxelRenderer<'a>{
                 match renderer.provider.shader_data{
                     None => renderer.provider.shader_data = Some(Box::new(provide_def)),
                     Some(x) =>{
-                        let provide_def_combined = |shader: &Program, win: WindowInfo|{
+                        let provide_def_combined = move |shader: &Program, win: &WindowInfo|{
                             provide_def(shader, win);
                             x(shader, win);
                         };
 
-                        renderer.provider.shader_data = Some(Box::new(provide_def_combined))
+                        renderer.provider.shader_data = Some(Box::new(provide_def_combined) as Box<Fn(&Program, &WindowInfo)>);
                     }
                 }
             },
@@ -131,12 +218,12 @@ impl<'a> VoxelRenderer<'a>{
               match renderer.provider.shader_data{
                   None => renderer.provider.shader_data = Some(Box::new(provide_ui)),
                   Some(x) => {
-                      let provide_ui_combined = |shader: &Program, win: WindowInfo|{
+                      let provide_ui_combined = move |shader: &Program, win: &WindowInfo|{
                           provide_ui(shader, win);
                           x(shader, win);
                       };
 
-                      renderer.provider.shader_data = Some(Box::new(provide_ui_combined))
+                      renderer.provider.shader_data = Some(Box::new(provide_ui_combined) as Box<Fn(&Program, &WindowInfo)>);
                   }
               }
             },

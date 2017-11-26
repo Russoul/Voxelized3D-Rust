@@ -9,7 +9,7 @@ use std;
 pub struct WindowInfo{
     pub width: usize,
     pub height: usize,
-    pub handle: *const GlfwWindow,
+    pub handle: *mut GlfwWindow, //TODO many GL functions take mutable ptr to GlfwWindow, but it is unsafe to leave it as mut in this struct
 }
 
 pub enum GlfwWindow{}
@@ -407,8 +407,8 @@ pub fn glfw_window_hint(c_enum : usize, val : usize){
     }
 }
 
-pub fn glfw_create_window(w : isize,
-                          h : isize,
+pub fn glfw_create_window(w : usize,
+                          h : usize,
                           title : &str) -> *mut GlfwWindow{
     let p1 : *mut c_void = ptr::null_mut();
     let p2 : *mut c_void = ptr::null_mut();
