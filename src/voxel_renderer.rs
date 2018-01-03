@@ -2,7 +2,6 @@
 use graphics::*;
 use renderer::*;
 use graphics_util::*;
-use vector::*;
 use math::*;
 use std::collections::HashMap;
 use std::error::Error;

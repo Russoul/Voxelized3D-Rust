@@ -1,7 +1,3 @@
-
-extern crate num;
-extern crate generic_array;
-
 use generic_array::*;
 use std::fmt::{Display, Formatter, Result};
 use typenum::*;
@@ -14,6 +10,8 @@ use std::fmt::Debug;
 use std::borrow::{Borrow, BorrowMut};
 use std::convert::{AsMut, AsRef};
 use std::hash::*;
+
+//TODO use nalgebra package instead !
 
 //newtype for GenericArray, zero runtime cost
 //'Vector' is mathematical vector

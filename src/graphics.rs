@@ -1,5 +1,4 @@
-extern crate libc;
-use self::libc::*;
+use libc::*;
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::ptr;

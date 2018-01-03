@@ -1,18 +1,22 @@
-
-
+#[macro_use]
 extern crate generic_array;
+extern crate nalgebra as na;
+extern crate typenum;
+extern crate alga;
+extern crate libc;
+extern crate ansi_term;
+
+use na::{Vector3};
 
 mod graphics;
-mod vector;
 mod graphics_util;
 mod renderer;
 mod math;
 mod voxel_renderer;
 
+
 use graphics::*;
 use std::ptr;
-use generic_array::*;
-use vector::*;
 use std::fs;
 use std::fs::File;
 use std::vec::*;
@@ -22,17 +26,18 @@ use std::io::Read;
 use renderer::*;
 use math::*;
 use voxel_renderer::*;
+use std::ops::*;
 
-//TODO mutable global data is unsafe, let us try to avoid it
-/*static mut win_width: usize = 0;
-static mut win_height: usize = -1;
 
-fn update_win_dim_info(new_width: usize, new_height: usize){
-    unsafe{
-        win_width = new_width;
-        win_height = new_height;
-    }
-}*/
+//F3 : FnMut(A) -> C
+fn compose<'l, A, B, C, F1, F2>(f1 : & 'l Box<F1>, f2 : &'l Box<F2>) -> Box<Fn(A) -> C + 'l>
+    where F1 : 'l + Fn(A) -> B,
+          F2 : 'l + Fn(B) -> C,
+          {
+    Box::new(move |a : A| {(*f2)((*f1)(a))})
+}
+
+
 
 extern fn framebuf_sz_cb(win : *mut GlfwWindow, w : isize, h : isize){
     gl_viewport(0,0,w,h);
@@ -84,15 +89,17 @@ fn process_input(win : *mut GlfwWindow){
 
 
 fn test_closures(){
-    fn clo_test<Clo : Fn() -> i32>(clo: Clo) -> i32{
-        clo()
-    }
+    let f = Box::new(|a: i32| a + 1);
+    let g = Box::new(|b: i32| b + 2);
 
-    let clo = ||{2};
-    clo_test(clo);
+    let composed = compose(&f, &g);
+
+    let res = composed(1);
+    let t2 = f(1);
+    println!("{}", res);
 }
 
-fn test_vectors(){
+/*fn test_vectors(){
     let ar1 = Vector::from(arr![usize;1,2,3,4]);
     let ar2 = ar1.clone();
     ar1.print();
@@ -105,7 +112,7 @@ fn test_vectors(){
     println!("{}", ar3);
     let mapped = Vector::from(ar1.get().map(|x| x + 1));
     println!("{}", mapped);
-}
+}*/
 
 fn load_shaders_vf() -> HashMap<String, Program>{
     let dir : &str = "./assets/shaders/";
@@ -147,7 +154,7 @@ fn load_shaders_vf() -> HashMap<String, Program>{
 fn main() {
     let def_width: usize = 800;
     let def_height: usize = 600;
-    test_vectors();
+    test_closures();
    
     //TODO check if it works
     glfw_set_error_callback(error_cb);
@@ -175,13 +182,13 @@ fn main() {
     let mut voxel_renderer = VoxelRenderer::new(&shaders);
     let mut win_info = WindowInfo{width: def_width, height: def_height, handle: win}; //will be updated each frame
 
-    let test_tr = Triangle{p1: Vector(arr![f32;-1.0,-1.0, 0.0]),
-                           p2: Vector(arr![f32;1.0, -1.0, 0.0]),
-                           p3: Vector(arr![f32;0.0, 1.0, 0.0])};
+    let test_tr = Triangle{p1: Vector3::new(-1.0,-1.0, 0.0),
+                           p2: Vector3::new(1.0, -1.0, 0.0),
+                           p3: Vector3::new(0.0, 1.0, 0.0)};
 
     let mut renderer = RendererVertFragDef::make(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
 
-    add_tringle_color(&mut renderer, test_tr, Vector(arr!(f32;1.0,0.0,0.0)));
+    add_tringle_color(&mut renderer, test_tr, Vector3::new(1.0,0.0,0.0));
     //let shader = shaders.get(&String::from("color")).unwrap();
     /*shader.enable();
     let id_mat = [

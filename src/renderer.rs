@@ -1,13 +1,10 @@
-extern crate libc;
-extern crate num;
-
-use typenum::*;
 use std::vec::*;
 use graphics::*;
-use self::libc::*;
-use vector::*;
+use libc::*;
 use math::*;
 use std::fmt::Debug;
+
+use na::{Vector3, U3};
 
 pub trait RendererVertFrag{
     fn render_mode       (&self) -> usize;
@@ -145,30 +142,30 @@ impl RendererVertFragDef{
     }
 }
 
-pub fn add_tringle_color(dat: &mut RendererVertFragDef, tr: Triangle<f32,U3>, color: Vector<f32,U3>){
-    dat.vertex_pool.push(tr.p1.0[0]);
-    dat.vertex_pool.push(tr.p1.0[1]);
-    dat.vertex_pool.push(tr.p1.0[2]);
+pub fn add_tringle_color(dat: &mut RendererVertFragDef, tr: Triangle<Vector3<f32>>, color: Vector3<f32>){
+    dat.vertex_pool.push(tr.p1[0]);
+    dat.vertex_pool.push(tr.p1[1]);
+    dat.vertex_pool.push(tr.p1[2]);
 
-    dat.vertex_pool.push(color.0[0]);
-    dat.vertex_pool.push(color.0[1]);
-    dat.vertex_pool.push(color.0[2]);
+    dat.vertex_pool.push(color[0]);
+    dat.vertex_pool.push(color[1]);
+    dat.vertex_pool.push(color[2]);
 
-    dat.vertex_pool.push(tr.p2.0[0]);
-    dat.vertex_pool.push(tr.p2.0[1]);
-    dat.vertex_pool.push(tr.p2.0[2]);
+    dat.vertex_pool.push(tr.p2[0]);
+    dat.vertex_pool.push(tr.p2[1]);
+    dat.vertex_pool.push(tr.p2[2]);
 
-    dat.vertex_pool.push(color.0[0]);
-    dat.vertex_pool.push(color.0[1]);
-    dat.vertex_pool.push(color.0[2]);
+    dat.vertex_pool.push(color[0]);
+    dat.vertex_pool.push(color[1]);
+    dat.vertex_pool.push(color[2]);
 
-    dat.vertex_pool.push(tr.p3.0[0]);
-    dat.vertex_pool.push(tr.p3.0[1]);
-    dat.vertex_pool.push(tr.p3.0[2]);
+    dat.vertex_pool.push(tr.p3[0]);
+    dat.vertex_pool.push(tr.p3[1]);
+    dat.vertex_pool.push(tr.p3[2]);
 
-    dat.vertex_pool.push(color.0[0]);
-    dat.vertex_pool.push(color.0[1]);
-    dat.vertex_pool.push(color.0[2]);
+    dat.vertex_pool.push(color[0]);
+    dat.vertex_pool.push(color[1]);
+    dat.vertex_pool.push(color[2]);
 
     dat.index_pool.push(dat.vertex_count + 0);
     dat.index_pool.push(dat.vertex_count + 1);

@@ -1,13 +1,10 @@
-extern crate libc;
-extern crate ansi_term;
-
-use self::libc::*;
+use libc::*;
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::ptr;
 use graphics::*;
-use self::ansi_term::Colour::Red;
-use self::ansi_term::Colour::Blue;
+use ansi_term::Colour::Red;
+use ansi_term::Colour::Blue;
 
 //vf for vertex&fragment
 //exits program on any error occured during shader proccessing

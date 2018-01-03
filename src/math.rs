@@ -1,10 +1,18 @@
-use vector::*;
-use generic_array::*;
+use std::ops::Mul;
+use std::fmt::*;
+use std;
+use na::{U1, U2, U3, Dynamic, MatrixArray, MatrixVec, Vector, VectorN, Real, DimName};
+use na::storage::Storage;
+use na::storage::ContiguousStorage;
+use generic_array::ArrayLength;
+use typenum::{Prod};
+use alga::linear::FiniteDimInnerSpace;
 
-pub struct Triangle<T, N : ArrayLength<T>>{
-    pub p1: Vector<T,N>,
-    pub p2: Vector<T,N>,
-    pub p3: Vector<T,N>,
+
+pub struct Triangle<V> where V : FiniteDimInnerSpace + Copy{
+    pub p1: V,
+    pub p2: V,
+    pub p3: V,
 }
 
 pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> [f32;16]{
