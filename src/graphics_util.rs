@@ -1,10 +1,7 @@
-use libc::*;
 use std::ffi::CString;
-use std::ffi::CStr;
-use std::ptr;
-use graphics::*;
 use ansi_term::Colour::Red;
 use ansi_term::Colour::Blue;
+use graphics::*;
 
 //vf for vertex&fragment
 //exits program on any error occured during shader proccessing

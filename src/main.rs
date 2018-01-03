@@ -1,10 +1,10 @@
-#[macro_use]
 extern crate generic_array;
 extern crate nalgebra as na;
 extern crate typenum;
 extern crate alga;
 extern crate libc;
 extern crate ansi_term;
+
 
 use na::{Vector3};
 
@@ -186,7 +186,11 @@ fn main() {
                            p2: Vector3::new(1.0, -1.0, 0.0),
                            p3: Vector3::new(0.0, 1.0, 0.0)};
 
-    let mut renderer = RendererVertFragDef::make(VERTEX_SIZE_COLOR, set_attrib_ptrs_color, GL_TRIANGLES, String::from("color"));
+    let mut renderer = RendererVertFragDef::make(
+        VERTEX_SIZE_COLOR,
+        set_attrib_ptrs_color,
+        GL_TRIANGLES,
+        String::from("color"));
 
     add_tringle_color(&mut renderer, test_tr, Vector3::new(1.0,0.0,0.0));
     //let shader = shaders.get(&String::from("color")).unwrap();
@@ -213,11 +217,15 @@ fn main() {
 
 
 
-    let mut render_info = RenderInfo{renderer: Box::new(renderer), provider};
+    let mut render_info = RenderInfo{renderer: Box::new(renderer), provider};//moved
 
-    (&mut render_info.renderer as &mut Box<RendererVertFrag>).construct();
 
     let id = voxel_renderer.push(RenderLifetime::Manual, RenderTransform::None, render_info).unwrap();
+
+
+
+
+    voxel_renderer.manual_mut(&id).construct();
 
     while !glfw_window_should_close(win){
         update_win_dim_info(&mut win_info);
@@ -235,8 +243,8 @@ fn main() {
         check_for_gl_errors();
     }
 
-    (&mut voxel_renderer.lifetime_manual_renderers.get_mut(&id).unwrap().renderer as &mut Box<RendererVertFrag>).deconstruct();
-    (&mut voxel_renderer.lifetime_manual_renderers.get_mut(&id).unwrap().renderer as &mut Box<RendererVertFrag>).reset();
+    voxel_renderer.manual_mut(&id).deconstruct();
+    voxel_renderer.manual_mut(&id).reset();
 
     glfw_terminate();
 }

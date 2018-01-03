@@ -1,6 +1,3 @@
-use std::ops::Mul;
-use std::fmt::*;
-use std;
 use na::{U1, U2, U3, Dynamic, MatrixArray, MatrixVec, Vector, VectorN, Real, DimName};
 use na::storage::Storage;
 use na::storage::ContiguousStorage;

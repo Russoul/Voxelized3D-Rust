@@ -7,6 +7,9 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::rc::*;
+use std::cell::{RefCell,Cell};
+use std::borrow::BorrowMut;
+use std::cell::RefMut;
 
 pub enum RenderLifetime{
     Manual,
@@ -60,11 +63,11 @@ pub struct RenderInfo{
 }
 
 pub struct VoxelRenderer<'a>{
-    lifetime_one_draw_renderers: HashMap<RenderID, RenderInfo>,
+    pub lifetime_one_draw_renderers: HashMap<RenderID, RenderInfo>,
     pub lifetime_manual_renderers: HashMap<RenderID, RenderInfo>,
 
     shaders: &'a HashMap<String, Program>,
-    render_id_counter: usize,
+    render_id_counter: Cell<usize>,
 }
 
 
@@ -74,9 +77,15 @@ impl<'a> VoxelRenderer<'a>{
             lifetime_one_draw_renderers: HashMap::new(),
             lifetime_manual_renderers: HashMap::new(),
             shaders,
-            render_id_counter: 0,
+            render_id_counter: Cell::new(0),
         }
     }
+
+
+    pub fn manual_mut(&mut self, id : &RenderID) -> &mut Box<RendererVertFrag>{
+        self.lifetime_manual_renderers.get_mut(id).unwrap().renderer.borrow_mut() as &mut Box<RendererVertFrag>
+    }
+
 
     pub fn draw(&mut self, win_info: &WindowInfo){
         for render_info in self.lifetime_one_draw_renderers.values_mut(){
@@ -231,7 +240,7 @@ impl<'a> VoxelRenderer<'a>{
             }
         };
 
-        let rid = RenderID::ID(self.render_id_counter);
+        let rid = RenderID::ID(self.render_id_counter.get());
 
 
         match life{
@@ -243,6 +252,8 @@ impl<'a> VoxelRenderer<'a>{
             }
 
         };
+
+        self.render_id_counter.set(self.render_id_counter.get() + 1);
 
         Ok(rid)
     }
