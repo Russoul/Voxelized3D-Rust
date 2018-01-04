@@ -1,4 +1,4 @@
-use na::{convert, U1, U2, U3, Dynamic, MatrixArray, Scalar, MatrixVec, Vector, Vector2, VectorN, Real, DimName};
+use na::*;
 use na::storage::Storage;
 use na::storage::ContiguousStorage;
 use generic_array::ArrayLength;
@@ -6,14 +6,47 @@ use typenum::{Prod};
 use alga::linear::FiniteDimInnerSpace;
 use alga::general::SupersetOf;
 use std::fmt::Debug;
+use std;
+use typenum;
+use generic_array;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Triangle<V> where V : FiniteDimInnerSpace + Copy{
-    pub p1: V,
-    pub p2: V,
-    pub p3: V,
+pub struct Triangle2<T : Scalar + Copy>{
+    pub p1: Vector2<T>,
+    pub p2: Vector2<T>,
+    pub p3: Vector2<T>,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Triangle3<T : Scalar + Copy>{
+    pub p1: Vector3<T>,
+    pub p2: Vector3<T>,
+    pub p3: Vector3<T>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Line2<T : Scalar + Copy> {
+    pub start : Vector2<T>,
+    pub end : Vector2<T>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Line3<T : Scalar + Copy> {
+    pub start : Vector3<T>,
+    pub end : Vector3<T>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Plane<T : Scalar + Copy> {
+    pub point : Vector3<T>,
+    pub normal : Vector3<T>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Square2<T : Scalar>{
+    pub center : Vector2<T>,
+    pub extent : T,
+}
 
 pub struct VoxelGrid2<T : Real + Copy>{
     pub a : T,
@@ -51,17 +84,7 @@ impl<T : Real + SupersetOf<f32>> VoxelGrid2<T>{
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Line<V> where V : FiniteDimInnerSpace + Copy{
-    pub start : V,
-    pub end : V,
-}
 
-#[derive(Clone, Copy, Debug)]
-pub struct Square2<T : Scalar>{
-    pub center : Vector2<T>,
-    pub extent : T,
-}
 
 pub type DenFn2<T> = Box<Fn(Vector2<T>) -> T>;
 
@@ -114,7 +137,7 @@ pub fn mk_rectangle2<T : Real + Copy>(center : Vector2<T>, extent : Vector2<T>) 
     intersection(i1, i2)
 }
 
-pub fn distance_point2_line2<T : Real>(point2 : Vector2<T>, line2 : Line<Vector2<T>>) -> T{
+pub fn distance_point2_line2<T : Real>(point2 : Vector2<T>, line2 : Line2<T>) -> T{
     let d = line2.start - line2.end;
     let norm = d.normalize();
     let n = Vector2::new(-norm.y, norm.x);

@@ -7,6 +7,7 @@ extern crate ansi_term;
 extern crate time;
 
 
+
 use na::{Vector2,Vector3,Point2,Point3,Vector4};
 use na::geometry::{Similarity,Similarity2,Translation2};
 
@@ -103,32 +104,6 @@ fn process_input(win : *mut GlfwWindow){
 }
 
 
-fn test_closures(){
-    let f = Box::new(|a: i32| a + 1);
-    let g = Box::new(|b: i32| b + 2);
-
-    let composed = compose(&f, &g);
-
-    let res = composed(1);
-    let t2 = f(1);
-    println!("{}", res);
-}
-
-/*fn test_vectors(){
-    let ar1 = Vector::from(arr![usize;1,2,3,4]);
-    let ar2 = ar1.clone();
-    ar1.print();
-
-    let ar3
-        = &ar1 + &ar1;
-    ar3.print();
-    let ar4 = &ar1 * &ar1;
-    println!("{}", ar4);
-    println!("{}", ar3);
-    let mapped = Vector::from(ar1.get().map(|x| x + 1));
-    println!("{}", mapped);
-}*/
-
 fn load_shaders_vf() -> HashMap<String, Program>{
     let dir : &str = "./assets/shaders/";
     let paths = fs::read_dir(dir).unwrap();
@@ -169,7 +144,6 @@ fn load_shaders_vf() -> HashMap<String, Program>{
 fn main() {
     let def_width: usize = 800;
     let def_height: usize = 600;
-    test_closures();
 
     //TODO check if it works
     glfw_set_error_callback(error_cb);
@@ -197,7 +171,7 @@ fn main() {
     let mut voxel_renderer = VoxelRenderer::new(&shaders);
     let mut win_info = WindowInfo{width: def_width, height: def_height, handle: win}; //will be updated each frame
 
-    let test_tr = Triangle{p1: Vector3::new(0.0,0.0, 0.0),
+    let test_tr = Triangle3{p1: Vector3::new(0.0,0.0, 0.0),
                            p2: Vector3::new(16.0, 0.0, 0.0),
                            p3: Vector3::new(8.0, 16.0, 0.0)};
 
@@ -238,7 +212,7 @@ fn main() {
     });
 
     for tr in &contour_data.triangles{
-        add_triangle_color(&mut renderer, &Triangle{p1 : Vector3::new(tr.p1.x, tr.p1.y, 0.0), p2 : Vector3::new(tr.p2.x, tr.p2.y, 0.0), p3 : Vector3::new(tr.p3.x, tr.p3.y, 0.0)}, Vector3::new(1.0,1.0,0.0))
+        add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(tr.p1.x, tr.p1.y, 0.0), p2 : Vector3::new(tr.p2.x, tr.p2.y, 0.0), p3 : Vector3::new(tr.p3.x, tr.p3.y, 0.0)}, Vector3::new(1.0,1.0,0.0))
     }
 
 
@@ -295,7 +269,7 @@ fn main() {
     glfw_terminate();
 }
 
-fn calc_qef(point : Vector2<f32>, lines : &Vec<Line<Vector2<f32>>>) -> f32{
+fn calc_qef(point : Vector2<f32>, lines : &Vec<Line2<f32>>) -> f32{
     let mut qef : f32 = 0.0;
     for line in lines{
         let dist = distance_point2_line2(point, line.clone());
@@ -309,7 +283,7 @@ fn const_sign(a : f32, b : f32) -> bool {
     if a > 0.0 { b > 0.0} else {b <= 0.0}
 }
 
-fn sample_qef_brute(square : Square2<f32>, n : usize, lines : &Vec<Line<Vector2<f32>>>) -> Vector2<f32> {
+fn sample_qef_brute(square : Square2<f32>, n : usize, lines : &Vec<Line2<f32>>) -> Vector2<f32> {
     let ext = Vector2::new(square.extent, square.extent);
     let min = square.center - ext;
 
@@ -332,7 +306,7 @@ fn sample_qef_brute(square : Square2<f32>, n : usize, lines : &Vec<Line<Vector2<
 }
 
 
-fn sample_intersection_brute(line : Line<Vector2<f32>>, n : usize, f : &DenFn2<f32>) -> Vector2<f32>{
+fn sample_intersection_brute(line : Line2<f32>, n : usize, f : &DenFn2<f32>) -> Vector2<f32>{
     let ext = line.end - line.start;
 
     let mut best_abs = 1000000000.0; //TODO placeholder
@@ -380,8 +354,8 @@ fn sample_tangent(square : Square2<f32>, n : usize, f : &DenFn2<f32>) -> Vector2
 fn ext_for_normal(block_size : f32) -> f32 {block_size / 100.0} //TODO why so ?
 
 
-fn make_lines(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>) -> Vec<Line<Vector2<f32>>>{
-    let mut ret = Vec::<Line<Vector2<f32>>>::new();
+fn make_lines(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>) -> Vec<Line2<f32>>{
+    let mut ret = Vec::<Line2<f32>>::new();
 
     for y in 0..vg.size_y - 1{
         for x in 0..vg.size_x - 1{
@@ -402,7 +376,7 @@ fn make_lines(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>) -> V
                 }
 
                 if vert1.is_some(){
-                    ret.push(Line{start : feature.unwrap(), end : vert1.unwrap()});
+                    ret.push(Line2{start : feature.unwrap(), end : vert1.unwrap()});
                 }
             }
         }
@@ -412,8 +386,8 @@ fn make_lines(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>) -> V
 }
 
 fn make_triangles(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>, intersections : &Vec<Option<Vec<Vector2<f32>>>>,
-    extra : &Vec<Option<Vec<Vector2<f32>>>>) -> Vec<Triangle<Vector2<f32>>>{
-    let mut ret = Vec::<Triangle<Vector2<f32>>>::new();
+    extra : &Vec<Option<Vec<Vector2<f32>>>>) -> Vec<Triangle2<f32>>{
+    let mut ret = Vec::<Triangle2<f32>>::new();
 
     for y in 0..vg.size_y{
         for x in 0.. vg.size_x{
@@ -442,8 +416,8 @@ fn make_triangles(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>, 
                 let negative = p0 < 0.0;
 
                 if negative{ //render if it is inside
-                    let tr1 = Triangle{p1: v0, p2 : v1, p3 : v3};
-                    let tr2 = Triangle{p1: v0, p2 : v3, p3 : v2};
+                    let tr1 = Triangle2{p1: v0, p2 : v1, p3 : v3};
+                    let tr2 = Triangle2{p1: v0, p2 : v3, p3 : v2};
 
                     ret.push(tr1);
                     ret.push(tr2);
@@ -453,7 +427,7 @@ fn make_triangles(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>, 
                 if cur_intersections.is_some() && features[t].is_some(){
                     let len = cur_intersections.as_ref().unwrap().len();
                     for i in 0..len{
-                        ret.push(Triangle{p1 : features[t].as_ref().unwrap().clone(), p2 : cur_intersections.as_ref().unwrap()[i].clone(), p3 : cur_extras.as_ref().unwrap()[i].clone()});
+                        ret.push(Triangle2{p1 : features[t].as_ref().unwrap().clone(), p2 : cur_intersections.as_ref().unwrap()[i].clone(), p3 : cur_extras.as_ref().unwrap()[i].clone()});
                     }
                 }
             }
@@ -464,7 +438,7 @@ fn make_triangles(vg : &VoxelGrid2<f32>, features : &Vec<Option<Vector2<f32>>>, 
 }
 
 
-fn make_vertex(vg : &VoxelGrid2<f32>, tr : &mut Vec<Triangle<Vector2<f32>>>, x : usize, y : usize,
+fn make_vertex(vg : &VoxelGrid2<f32>, tr : &mut Vec<Triangle2<f32>>, x : usize, y : usize,
     f : &DenFn2<f32>, accuracy : usize, features : &mut Vec<Option<Vector2<f32>>>, out_intersections : &mut Vec<Vector2<f32>>, out_extra : &mut Vec<Vector2<f32>>) -> Option<Vector2<f32>>{
     let epsilon = vg.a / accuracy as f32;
 
@@ -488,7 +462,7 @@ fn make_vertex(vg : &VoxelGrid2<f32>, tr : &mut Vec<Triangle<Vector2<f32>>>, x :
     let ext_for_normal = ext_for_normal(vg.a);
 
     if sit > 0{
-        let mut tangents = Vec::<Line<Vector2<f32>>>::new();
+        let mut tangents = Vec::<Line2<f32>>::new();
 
         let mut vert1 : Option<Vector2<f32>> = None;
         let mut vert2 : Option<Vector2<f32>> = None;
@@ -496,10 +470,10 @@ fn make_vertex(vg : &VoxelGrid2<f32>, tr : &mut Vec<Triangle<Vector2<f32>>>, x :
         {
             let mut worker = |and : usize, v_a : Vector2<f32>, v_b : Vector2<f32>, p_a : f32, p_b : f32|{
                 if (sit & and) > 0{
-                    let ip = sample_intersection_brute(Line{start : v_a, end : v_b}, accuracy, f);
+                    let ip = sample_intersection_brute(Line2{start : v_a, end : v_b}, accuracy, f);
                     let full = if p_a <= 0.0 {v_a} else {v_b};
                     let dir = sample_tangent(Square2{center : ip, extent : ext_for_normal}, accuracy, f);
-                    let line = Line{start : ip - dir * (1.0 / ext_for_normal), end : ip + dir * (1.0 / ext_for_normal)};
+                    let line = Line2{start : ip - dir * (1.0 / ext_for_normal), end : ip + dir * (1.0 / ext_for_normal)};
                     tangents.push(line);
 
                     out_intersections.push(ip);
@@ -523,7 +497,7 @@ fn make_vertex(vg : &VoxelGrid2<f32>, tr : &mut Vec<Triangle<Vector2<f32>>>, x :
         let interpolated_vertex = sample_qef_brute(vg.square2(x,y), accuracy, &tangents);
 
         for i in 0..out_intersections.len(){
-            tr.push(Triangle{p1 : interpolated_vertex, p2 : out_intersections[i], p3 : out_extra[i]});
+            tr.push(Triangle2{p1 : interpolated_vertex, p2 : out_intersections[i], p3 : out_extra[i]});
         }
 
         features[y * vg.size_x + x] = Some(interpolated_vertex);
@@ -535,23 +509,23 @@ fn make_vertex(vg : &VoxelGrid2<f32>, tr : &mut Vec<Triangle<Vector2<f32>>>, x :
 }
 
 struct ContourData{
-    pub lines : Vec<Line<Vector2<f32>>>,
-    pub triangles : Vec<Triangle<Vector2<f32>>>,
+    pub lines : Vec<Line2<f32>>,
+    pub triangles : Vec<Triangle2<f32>>,
     pub features : Vec<Option<Vector2<f32>>>,
     pub intersections : Vec<Option<Vec<Vector2<f32>>>>,
     pub extras : Vec<Option<Vec<Vector2<f32>>>>,
 }
 
 fn make_contour(vg : &VoxelGrid2<f32>, f : &DenFn2<f32>, accuracy : usize) -> ContourData{
-    let mut res1 = Vec::<Line<Vector2<f32>>>::new();
-    let mut res2 = Vec::<Triangle<Vector2<f32>>>::new();
+    let mut res1 = Vec::<Line2<f32>>::new();
+    let mut res2 = Vec::<Triangle2<f32>>::new();
 
     let mut features : Vec<Option<Vector2<f32>>> = vec![None;vg.size_x * vg.size_y];
     let mut intersections : Vec<Option<Vec<Vector2<f32>>>> = vec![None;vg.size_x * vg.size_y];
     let mut extras : Vec<Option<Vec<Vector2<f32>>>> = vec![None;vg.size_x * vg.size_y];
 
     {
-        let mut cached_make = |x: usize, y: usize, res2: &mut Vec<Triangle<Vector2<f32>>>| -> Option<Vector2<f32>>{
+        let mut cached_make = |x: usize, y: usize, res2: &mut Vec<Triangle2<f32>>| -> Option<Vector2<f32>>{
             let t = y * vg.size_x + x;
             let possible = features[t];
             if possible.is_none() {
@@ -607,17 +581,17 @@ fn make_contour(vg : &VoxelGrid2<f32>, f : &DenFn2<f32>, accuracy : usize) -> Co
                     }
 
                     if vert1.is_some() {
-                        res1.push(Line { start: interpolated_vertex, end: vert1.unwrap() });
+                        res1.push(Line2 { start: interpolated_vertex, end: vert1.unwrap() });
                     }
                     if vert2.is_some() {
-                        res1.push(Line { start: interpolated_vertex, end: vert2.unwrap() });
+                        res1.push(Line2 { start: interpolated_vertex, end: vert2.unwrap() });
                     }
                 } else {
                     let negative = p0 < 0.0;
 
                     if negative {
-                        let tr1 = Triangle { p1: v0, p2: v1, p3: v3 };
-                        let tr2 = Triangle { p1: v0, p2: v3, p3: v2 };
+                        let tr1 = Triangle2 { p1: v0, p2: v1, p3: v3 };
+                        let tr2 = Triangle2 { p1: v0, p2: v3, p3: v2 };
 
                         res2.push(tr1);
                         res2.push(tr2);
