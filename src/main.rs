@@ -7,7 +7,8 @@ extern crate ansi_term;
 extern crate time;
 
 
-use na::{Vector3, Vector2};
+use na::{Vector2,Vector3,Point2,Point3,Vector4};
+use na::geometry::{Similarity,Similarity2,Translation2};
 
 mod graphics;
 mod graphics_util;
@@ -31,12 +32,16 @@ use std::ops::*;
 
 use time::precise_time_ns;
 
-fn timed(f : &Box<Fn()>){
+fn timed<T>(str_fn: &(Fn(u64) -> String), f : &mut (FnMut() -> T)) -> T{
     let t1 = precise_time_ns();
-    f();
+    let ret = f();
     let t2 = precise_time_ns();
 
-    println!("operation took {} ns", t2 - t1);
+    let dt = t2 - t1;
+
+    println!("{}", str_fn(dt));
+
+    ret
 }
 
 //F3 : FnMut(A) -> C
@@ -165,8 +170,7 @@ fn main() {
     let def_width: usize = 800;
     let def_height: usize = 600;
     test_closures();
-    test();
-   
+
     //TODO check if it works
     glfw_set_error_callback(error_cb);
     glfw_init();
@@ -193,9 +197,9 @@ fn main() {
     let mut voxel_renderer = VoxelRenderer::new(&shaders);
     let mut win_info = WindowInfo{width: def_width, height: def_height, handle: win}; //will be updated each frame
 
-    let test_tr = Triangle{p1: Vector3::new(-1.0,-1.0, 0.0),
-                           p2: Vector3::new(1.0, -1.0, 0.0),
-                           p3: Vector3::new(0.0, 1.0, 0.0)};
+    let test_tr = Triangle{p1: Vector3::new(0.0,0.0, 0.0),
+                           p2: Vector3::new(16.0, 0.0, 0.0),
+                           p3: Vector3::new(8.0, 16.0, 0.0)};
 
     let mut renderer = RendererVertFragDef::make(
         VERTEX_SIZE_COLOR,
@@ -203,25 +207,57 @@ fn main() {
         GL_TRIANGLES,
         String::from("color"));
 
-    add_tringle_color(&mut renderer, test_tr, Vector3::new(1.0,0.0,0.0));
-    //let shader = shaders.get(&String::from("color")).unwrap();
-    /*shader.enable();
-    let id_mat = [
-        1.0,0.0,0.0,0.0,
-        0.0,1.0,0.0,0.0,
-        0.0,0.0,1.0,0.0,
-        0.0,0.0,0.0,1.0];
-    shader.set_float4x4("P", false, &id_mat);
-    shader.set_float4x4("V", false, &id_mat);*/
+    //add_tringle_color(&mut renderer, test_tr, Vector3::new(1.0,0.0,0.0));
+
+
+    let BLOCK_SIZE : f32 = 0.125;
+    let CHUNK_SIZE : usize = 128;
+
+    let mut grid = VoxelGrid2::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+
+    let offset = Vector2::new(0.1, 0.1);
+
+    let circle1 = mk_circle2(Vector2::new(4.0 as f32,8.0) + offset, 2.0);
+    let circle2 = mk_circle2(Vector2::new(8.0 as f32,8.0) + offset, 5.0);
+    let circle3 = mk_circle2(Vector2::new(4.0 as f32,4.0) + offset, 2.0);
+    let circle4 = mk_circle2(Vector2::new(8.0 as f32,12.0) + offset, 4.0);
+    let circle5 = mk_circle2(Vector2::new(8.0 as f32,6.0) + offset, 1.1);
+
+    let rec = mk_rectangle2(Vector2::new(8.0 as f32, 10.8) + offset, Vector2::new(1.0, 3.0));
+
+    let i1 = union(circle1, circle2);
+    let i2 = union(i1, rec);
+    let i3 = difference(i2, circle3);
+    let i4 = difference(i3, circle4);
+    let i5 = difference(i4, circle5);
+    //let i6 = union(i5, rec);
+
+    let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
+        fill_in_grid(&mut grid, &i5, Vector2::new(0.0, 0.0));
+        make_contour(&grid, &i5, 32)
+    });
+
+    for tr in &contour_data.triangles{
+        add_triangle_color(&mut renderer, &Triangle{p1 : Vector3::new(tr.p1.x, tr.p1.y, 0.0), p2 : Vector3::new(tr.p2.x, tr.p2.y, 0.0), p3 : Vector3::new(tr.p3.x, tr.p3.y, 0.0)}, Vector3::new(1.0,1.0,0.0))
+    }
+
 
     fn shader_data(shader: &Program, win: &WindowInfo){
+        let aspect = win.width as f32 / win.height as f32;
+        let height = 16.0;
+        let width = height;
         let id_mat = [
             1.0,0.0,0.0,0.0,
             0.0,1.0,0.0,0.0,
             0.0,0.0,1.0,0.0,
             0.0,0.0,0.0,1.0];
-        shader.set_float4x4("P", false, &id_mat);
-        shader.set_float4x4("V", false, &id_mat);
+
+        let cam_world_pos = Vector3::new(0.0, 0.0, 0.0);
+        let m = na::Translation::from_vector(-cam_world_pos);
+
+        shader.set_float4x4("P", false, na::geometry::Orthographic3::new(0.0, width, 0.0, height, -1.0, 1.0).to_homogeneous().as_slice());
+        shader.set_float4x4("V", false, m.to_homogeneous().as_slice());
+
     }
 
     let provider = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
@@ -232,7 +268,6 @@ fn main() {
 
 
     let id = voxel_renderer.push(RenderLifetime::Manual, RenderTransform::None, render_info).unwrap();
-
 
 
 
@@ -605,34 +640,3 @@ fn fill_in_grid(vg : &mut VoxelGrid2<f32>, f : &DenFn2<f32>, point : Vector2<f32
     }
 }
 
-
-fn test(){
-    let BLOCK_SIZE : f32 = 0.125;
-    let CHUNK_SIZE : usize = 128;
-
-    let mut grid = VoxelGrid2::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
-
-    let offset = Vector2::new(0.1, 0.1);
-
-    let circle1 = mk_circle2(Vector2::new(4.0 as f32,8.0) + offset, 2.0);
-    let circle2 = mk_circle2(Vector2::new(8.0 as f32,8.0) + offset, 5.0);
-    let circle3 = mk_circle2(Vector2::new(4.0 as f32,4.0) + offset, 2.0);
-    let circle4 = mk_circle2(Vector2::new(8.0 as f32,12.0) + offset, 4.0);
-    let circle5 = mk_circle2(Vector2::new(8.0 as f32,6.0) + offset, 1.1);
-
-    let rec = mk_rectangle2(Vector2::new(8.0 as f32, 10.8) + offset, Vector2::new(1.0, 3.0));
-
-    let i1 = union(circle1, circle2);
-    let i2 = union(i1, rec);
-    let i3 = difference(i2, circle3);
-    let i4 = difference(i3, circle4);
-    let i5 = difference(i4, circle5);
-    //let i6 = union(i5, rec);
-
-    let t1 = precise_time_ns();
-    fill_in_grid(&mut grid, &i5, Vector2::new(0.0, 0.0));
-    make_contour(&grid, &i5, 32);
-    let t2 = precise_time_ns();
-
-    println!("operation took {} ms", (t2 - t1) / 1000000);
-}

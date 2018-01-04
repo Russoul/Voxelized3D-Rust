@@ -140,7 +140,7 @@ impl RendererVertFragDef{
     }
 }
 
-pub fn add_tringle_color(dat: &mut RendererVertFragDef, tr: Triangle<Vector3<f32>>, color: Vector3<f32>){
+pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle<Vector3<f32>>, color: Vector3<f32>){
     dat.vertex_pool.push(tr.p1[0]);
     dat.vertex_pool.push(tr.p1[1]);
     dat.vertex_pool.push(tr.p1[2]);
