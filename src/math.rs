@@ -48,6 +48,19 @@ pub struct Square2<T : Scalar>{
     pub extent : T,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Square3<T : Scalar>{
+    pub center : Vector3<T>,
+    pub extent : T,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Sphere<T : Scalar>{
+    pub center : Vector3<T>,
+    pub rad : T,
+}
+
+
 pub struct VoxelGrid2<T : Real + Copy>{
     pub a : T,
     pub size_x : usize,
@@ -87,6 +100,7 @@ impl<T : Real + SupersetOf<f32>> VoxelGrid2<T>{
 
 
 pub type DenFn2<T> = Box<Fn(Vector2<T>) -> T>;
+pub type DenFn3<T> = Box<Fn(Vector3<T>) -> T>;
 
 pub fn intersection<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
     Box::new(move |x|{Real::max(a(x), b(x))})
@@ -137,12 +151,24 @@ pub fn mk_rectangle2<T : Real + Copy>(center : Vector2<T>, extent : Vector2<T>) 
     intersection(i1, i2)
 }
 
-pub fn distance_point2_line2<T : Real>(point2 : Vector2<T>, line2 : Line2<T>) -> T{
+pub fn mk_sphere<T : Real + Copy>(sphere : Sphere<T>) -> DenFn3<T>{
+    Box::new(move |x|{
+        let dist = x - sphere.center;
+        dist.dot(&dist) - sphere.rad * sphere.rad
+    })
+}
+
+pub fn distance_point2_line2<T : Real>(point2 : &Vector2<T>, line2 : &Line2<T>) -> T{
     let d = line2.start - line2.end;
     let norm = d.normalize();
     let n = Vector2::new(-norm.y, norm.x);
     let vec = point2 - line2.start;
     Real::abs(n.dot(&vec))
+}
+
+pub fn distance_point3_plane<T : Real>(point3 : &Vector3<T>, plane : &Plane<T>) -> T{
+    let vec = point3 - plane.point;
+    Real::abs(plane.normal.dot(&vec))
 }
 
 

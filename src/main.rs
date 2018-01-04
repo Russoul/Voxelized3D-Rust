@@ -16,7 +16,7 @@ mod graphics_util;
 mod renderer;
 mod math;
 mod voxel_renderer;
-
+mod dc;
 
 use graphics::*;
 use std::ptr;
@@ -206,7 +206,7 @@ fn main() {
     let i5 = difference(i4, circle5);
     //let i6 = union(i5, rec);
 
-    let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
+    /*let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
         fill_in_grid(&mut grid, &i5, Vector2::new(0.0, 0.0));
         make_contour(&grid, &i5, 32)
     });
@@ -214,6 +214,10 @@ fn main() {
     for tr in &contour_data.triangles{
         add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(tr.p1.x, tr.p1.y, 0.0), p2 : Vector3::new(tr.p2.x, tr.p2.y, 0.0), p3 : Vector3::new(tr.p3.x, tr.p3.y, 0.0)}, Vector3::new(1.0,1.0,0.0))
     }
+    */
+
+
+    //dc::test_sample_normal();
 
 
     fn shader_data(shader: &Program, win: &WindowInfo){
@@ -269,10 +273,10 @@ fn main() {
     glfw_terminate();
 }
 
-fn calc_qef(point : Vector2<f32>, lines : &Vec<Line2<f32>>) -> f32{
+fn calc_qef(point : &Vector2<f32>, lines : &Vec<Line2<f32>>) -> f32{
     let mut qef : f32 = 0.0;
     for line in lines{
-        let dist = distance_point2_line2(point, line.clone());
+        let dist = distance_point2_line2(point, line);
         qef += dist * dist;
     }
 
@@ -293,7 +297,7 @@ fn sample_qef_brute(square : Square2<f32>, n : usize, lines : &Vec<Line2<f32>>) 
     for i in 0..n{
         for j in 0..n{
             let point = min + Vector2::new(ext.x * (2.0 * (i as f32) + 1.0) / (n as f32), ext.y * (2.0 * (j as f32) + 1.0) / (n as f32));
-            let qef = calc_qef(point, &lines);
+            let qef = calc_qef(&point, &lines);
 
             if qef < best_qef{
                 best_qef = qef;
