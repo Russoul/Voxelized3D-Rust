@@ -97,7 +97,46 @@ impl<T : Real + SupersetOf<f32>> VoxelGrid2<T>{
     }
 }
 
+pub struct VoxelGrid3<T : Real + Copy>{
+    pub a : T,
+    pub size_x : usize,
+    pub size_y : usize,
+    pub size_z : usize,
+    pub grid : Vec<T>,
+}
 
+impl<T : Real + SupersetOf<f32>> VoxelGrid3<T>{
+
+    pub fn vertices_x(&self) -> usize {self.size_x + 1}
+    pub fn vertices_y(&self) -> usize {self.size_y + 1}
+    pub fn vertices_z(&self) -> usize {self.size_z + 1}
+
+    pub fn new(a : T, size_x : usize, size_y : usize, size_z : usize) -> VoxelGrid3<T>{
+        let grid = vec![convert(0.0);(size_x + 1) * (size_y + 1) * (size_z + 1)];
+
+        VoxelGrid3{a,size_x, size_y, size_z, grid}
+    }
+
+    pub fn get(&self, x : usize, y : usize, z : usize) -> T{
+        self.grid[z * self.vertices_y() * self.vertices_x() + y * self.vertices_x() + x]
+    }
+
+    pub fn set(&mut self, x : usize, y : usize, z : usize, value : T){
+        let vx = self.vertices_x();
+        let vy = self.vertices_y();
+        self.grid[z * vy * vx + y * vx + x] = value;
+    }
+
+
+    pub fn get_point(&self, x : usize, y : usize, z : usize) -> Vector3<T>{
+        Vector3::new(self.a * convert::<f32, T>(x as f32), self.a * convert::<f32, T>(y as f32), self.a * convert::<f32, T>(z as f32))
+    }
+
+    //bounding box of the cube
+    pub fn square3(&self, x : usize, y : usize, z : usize) -> Square3<T>{
+        Square3{center : Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    }
+}
 
 pub type DenFn2<T> = Box<Fn(Vector2<T>) -> T>;
 pub type DenFn3<T> = Box<Fn(Vector3<T>) -> T>;
