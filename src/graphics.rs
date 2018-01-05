@@ -127,6 +127,7 @@ extern {
     fn glfwPollEvents();
     fn glfwGetKey(win : *mut GlfwWindow, key : usize) -> usize;
     fn glfwSetWindowShouldClose(win : *mut GlfwWindow, val : bool);
+    fn glfwSetInputMode(win : *mut GlfwWindow, mode : isize, value : isize);
 
     fn glfwGetWindowSize(win : *mut GlfwWindow, w : *mut usize, h : *mut usize);
     fn glfwGetVideoMode(mon : *mut GlfwMonitor) -> *mut GlfwVidMode;
@@ -178,6 +179,12 @@ extern {
     fn glGetIntegerv(param: usize, out: *mut isize);
     fn glGetError() -> usize;
 
+}
+
+pub fn glfw_set_input_mode(win : *mut GlfwWindow, mode : isize, value : isize){
+    unsafe{
+        glfwSetInputMode(win, mode, value);
+    }
 }
 
 pub fn gl_delete_shader(shader: usize){

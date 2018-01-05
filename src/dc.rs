@@ -120,7 +120,7 @@ pub fn test_sample_normal(){
 // intersects the surface) and not calculated otherwise
 fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
                f : &DenFn3<f32>, accuracy : usize, contour_data : &mut ContourData) -> Option<Vector3<f32>>{
-    let epsilon = vg.a / accuracy as f32;
+    //let epsilon = vg.a / accuracy as f32;
 
     let p00 = vg.get(x, y, z);
     let p01 = vg.get(x + 1, y, z);
@@ -172,7 +172,8 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
                     let normal = sample_normal(&Sphere{center : ip, rad : rad_for_normal}, accuracy, f);
                     planes.push(Plane{point : ip, normal});
 
-                    //TODO calculate feature vertices of 3 other cubes containing this edge then create a quad from maximum of 4 those feature vertices.
+                    //calculate feature vertices of 3 other cubes containing this edge then create a quad from maximum of 4 those feature vertices.
+                    //this is done in make_contour
                 }
             };
 
@@ -194,8 +195,10 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
 
         let feature_vertex = sample_qef_brute(vg.square3(x,y,z), accuracy, &planes);
 
+        let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
 
-        contour_data.features[z * vg.size_y * vg.size_x + y * vg.size_x + x] = Some(feature_vertex);
+        contour_data.features[t] = Some(feature_vertex);
+        contour_data.normals[t] = Some(sample_normal(&Sphere{center : feature_vertex, rad : rad_for_normal}, accuracy, f));
 
         Some(feature_vertex)
     }else{
@@ -203,9 +206,133 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
     }
 }
 
+pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize) -> ContourData{
 
-struct ContourData{ // + hermite data ? (exact points of intersection of the surface with each edge that exhibits a sign change + normals for each of those points)
+    //TODO inefficient Vec::new() creation vvv
+    let mut contour_data = ContourData{lines : Vec::new(), triangles : Vec::new(), features : vec![None;vg.size_x * vg.size_y * vg.size_z], normals : vec![None;vg.size_x * vg.size_y * vg.size_z]};
+    let mut cache_already_calculated = vec![false;vg.size_x * vg.size_y * vg.size_z]; //this cache is used to mark cubes that have already been calculated for feature vertex
+
+    {
+        //&mut contour_data, cache_already_calculated
+        let mut cached_make = |x: usize, y: usize, z : usize, contour_data : &mut ContourData| -> Option<Vector3<f32>>{
+            let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
+
+            if cache_already_calculated[t] {
+                contour_data.features[t]
+            }else{
+                cache_already_calculated[t] = true;
+                calc_feature(&vg, x, y, z, f, accuracy, contour_data)
+            }
+
+
+        };
+
+        for z in 0..vg.size_z{
+            for y in 0..vg.size_y {
+                for x in 0..vg.size_x {
+                    let p00 = vg.get(x, y, z);
+                    let p01 = vg.get(x + 1, y, z);
+                    let p02 = vg.get(x, y + 1, z);
+                    let p03 = vg.get(x + 1, y + 1, z);
+
+                    let p10 = vg.get(x, y, z + 1);
+                    let p11 = vg.get(x + 1, y, z + 1);
+                    let p12 = vg.get(x, y + 1, z + 1);
+                    let p13 = vg.get(x + 1, y + 1, z + 1);
+
+                    /*let v00 = vg.get_point(x, y, z);
+                    let v01 = vg.get_point(x + 1, y, z);
+                    let v02 = vg.get_point(x, y + 1, z);
+                    let v03 = vg.get_point(x + 1, y + 1, z);
+
+                    let v10 = vg.get_point(x,y, z + 1);
+                    let v11 = vg.get_point(x + 1, y, z + 1);
+                    let v12 = vg.get_point(x, y + 1, z + 1);
+                    let v13 = vg.get_point(x + 1, y + 1, z + 1);*/
+
+
+                    let possible_feature_vertex = cached_make(x, y, z, &mut contour_data);
+
+                    match possible_feature_vertex{
+                        None => (),
+                        Some(f0) => {
+                            let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
+                            let normal = contour_data.normals[t].unwrap();
+
+                            if !const_sign(p03, p13){
+
+                                let f1 = cached_make(x + 1, y, z, &mut contour_data).unwrap();
+                                let f2 = cached_make(x + 1, y + 1, z, &mut contour_data).unwrap();
+                                let f3 = cached_make(x, y + 1, z, &mut contour_data).unwrap();
+                                //f1 && f2 && f3 all should be non-empty, as they all exhibit a sign change at least on their common edge
+
+                                //this is needed to calculate the direction of the resulting quad correctly
+                                let dir = (f2 - f0).cross(&(f3 - f0));
+                                if dir.dot(&normal) > 0.0{ //should not be zero at any time
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
+                                }else{
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
+                                }
+                            }
+                            if !const_sign(p12, p13){
+                                let f1 = cached_make(x, y, z + 1, &mut contour_data).unwrap();
+                                let f2 = cached_make(x, y + 1, z + 1, &mut contour_data).unwrap();
+                                let f3 = cached_make(x, y + 1, z, &mut contour_data).unwrap();
+                                //f1 && f2 && f3 all should be non-empty, as they all exhibit a sign change at least on their common edge
+
+                                //this is needed to calculate the direction of the resulting quad correctly
+                                let dir = (f2 - f0).cross(&(f3 - f0));
+                                if dir.dot(&normal) > 0.0{ //should not be zero at any time
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
+                                }else{
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
+                                }
+                            }
+                            if !const_sign(p11, p13){
+                                let f1 = cached_make(x + 1, y, z, &mut contour_data).unwrap();
+                                let f2 = cached_make(x + 1, y, z + 1, &mut contour_data).unwrap();
+                                let f3 = cached_make(x, y, z + 1, &mut contour_data).unwrap();
+                                //f1 && f2 && f3 all should be non-empty, as they all exhibit a sign change at least on their common edge
+
+                                //this is needed to calculate the direction of the resulting quad correctly
+                                let dir = (f2 - f0).cross(&(f3 - f0));
+                                if dir.dot(&normal) > 0.0{ //should not be zero at any time
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
+                                }else{
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
+                                }
+                            }
+                        },
+                    }
+
+
+
+                }
+            }
+        }
+
+    }
+
+    contour_data
+
+}
+
+pub fn fill_in_grid(vg : &mut VoxelGrid3<f32>, f : &DenFn3<f32>, offset : Vector3<f32>){
+    for z in 0..vg.size_z + 1 {
+        for y in 0..vg.size_y + 1{
+            for x in 0..vg.size_x + 1 {
+                let vx = vg.vertices_x();
+                let vy = vg.vertices_y();
+                vg.grid[z * vy * vx + y * vx + x] = f(offset + Vector3::new(vg.a * (x as f32), vg.a * (y as f32), vg.a * (z as f32)));
+            }
+        }
+    }
+}
+
+
+pub struct ContourData{ // + hermite data ? (exact points of intersection of the surface with each edge that exhibits a sign change + normals for each of those points)
     pub lines : Vec<Line3<f32>>,
     pub triangles : Vec<Triangle3<f32>>,
     pub features : Vec<Option<Vector3<f32>>>,
+    pub normals : Vec<Option<Vector3<f32>>>, //normal to the surface calculated at feature vertex
 }

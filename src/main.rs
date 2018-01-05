@@ -81,7 +81,7 @@ fn update_win_dim_info(info: &mut WindowInfo){
     info.height = h;
 }
 
-fn process_input(win : *mut GlfwWindow){
+fn process_input(win : *mut GlfwWindow, dt_ns : u64){
     if glfw_get_key(win, GLFW_KEY_ESCAPE) == GLFW_PRESS{
         glfw_set_window_should_close(win, true);
     }
@@ -100,6 +100,11 @@ fn process_input(win : *mut GlfwWindow){
         unsafe{
             println!("{:?}", *vid_mode)
         }
+    }
+
+
+    if glfw_get_key(win, GLFW_KEY_W) == GLFW_PRESS{
+
     }
 }
 
@@ -166,14 +171,13 @@ fn main() {
     
     glfw_set_framebuffer_size_callback(win, framebuf_sz_cb);
 
+    glfw_set_input_mode(win, GLFW_STICKY_KEYS, 1);
 
     let shaders = load_shaders_vf();
     let mut voxel_renderer = VoxelRenderer::new(&shaders);
     let mut win_info = WindowInfo{width: def_width, height: def_height, handle: win}; //will be updated each frame
 
-    let test_tr = Triangle3{p1: Vector3::new(0.0,0.0, 0.0),
-                           p2: Vector3::new(16.0, 0.0, 0.0),
-                           p3: Vector3::new(8.0, 16.0, 0.0)};
+
 
     let mut renderer = RendererVertFragDef::make(
         VERTEX_SIZE_COLOR,
@@ -181,44 +185,42 @@ fn main() {
         GL_TRIANGLES,
         String::from("color"));
 
-    //add_tringle_color(&mut renderer, test_tr, Vector3::new(1.0,0.0,0.0));
+    let red = Vector3::new(1.0, 0.0, 0.0);
 
 
+
+    //====================================
     let BLOCK_SIZE : f32 = 0.125;
     let CHUNK_SIZE : usize = 128;
 
-    let mut grid = VoxelGrid2::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+    let mut grid = VoxelGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
 
-    let offset = Vector2::new(0.1, 0.1);
+    let offset = Vector3::new(0.0, 0.0, 0.0);
 
-    let circle1 = mk_circle2(Vector2::new(4.0 as f32,8.0) + offset, 2.0);
-    let circle2 = mk_circle2(Vector2::new(8.0 as f32,8.0) + offset, 5.0);
-    let circle3 = mk_circle2(Vector2::new(4.0 as f32,4.0) + offset, 2.0);
-    let circle4 = mk_circle2(Vector2::new(8.0 as f32,12.0) + offset, 4.0);
-    let circle5 = mk_circle2(Vector2::new(8.0 as f32,6.0) + offset, 1.1);
+    let sphere1 = mk_sphere(Sphere{center : Vector3::new(4.0 as f32,4.0, 4.0) + offset, rad : 2.0});
 
-    let rec = mk_rectangle2(Vector2::new(8.0 as f32, 10.8) + offset, Vector2::new(1.0, 3.0));
 
-    let i1 = union(circle1, circle2);
-    let i2 = union(i1, rec);
-    let i3 = difference(i2, circle3);
-    let i4 = difference(i3, circle4);
-    let i5 = difference(i4, circle5);
-    //let i6 = union(i5, rec);
-
-    /*let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
-        fill_in_grid(&mut grid, &i5, Vector2::new(0.0, 0.0));
-        make_contour(&grid, &i5, 32)
+    let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
+        dc::fill_in_grid(&mut grid, &sphere1, Vector3::new(0.0, 0.0, 0.0));
+        dc::make_contour(&grid, &sphere1, 32)
     });
 
+    println!("generated {} triangles", contour_data.triangles.len());
+
     for tr in &contour_data.triangles{
-        add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(tr.p1.x, tr.p1.y, 0.0), p2 : Vector3::new(tr.p2.x, tr.p2.y, 0.0), p3 : Vector3::new(tr.p3.x, tr.p3.y, 0.0)}, Vector3::new(1.0,1.0,0.0))
+        //add_triangle_color(&mut renderer, tr, Vector3::new(1.0,1.0,0.0))
     }
-    */
+    //===================================
 
 
     //dc::test_sample_normal();
 
+    add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(4.0, 4.0, 4.0), p2 : Vector3::new(5.0, 4.0, 4.0), p3 : Vector3::new(4.0, 5.0, 4.0)}, red);
+
+    let test_tr = Triangle3{p1: Vector3::new(0.0, 0.0, -2.0),
+        p2: Vector3::new(4.0, 0.0,  -2.0),
+        p3: Vector3::new(4.0, 4.0,  -2.0)};
+    add_triangle_color(&mut renderer, &test_tr, Vector3::new(1.0,0.0,0.0));
 
     fn shader_data(shader: &Program, win: &WindowInfo){
         let aspect = win.width as f32 / win.height as f32;
@@ -233,8 +235,13 @@ fn main() {
         let cam_world_pos = Vector3::new(0.0, 0.0, 0.0);
         let m = na::Translation::from_vector(-cam_world_pos);
 
-        shader.set_float4x4("P", false, na::geometry::Orthographic3::new(0.0, width, 0.0, height, -1.0, 1.0).to_homogeneous().as_slice());
-        shader.set_float4x4("V", false, m.to_homogeneous().as_slice());
+        let persp = na::Perspective3::new(aspect, 160.0, 0.1, 16.0).to_homogeneous();
+        let view = view(cam_world_pos, Vector3::new(4.0 as f32,4.0, 4.0), Vector3::new(0.0, 1.0, 0.0));
+
+
+
+        shader.set_float4x4("P", false, persp.as_slice());
+        shader.set_float4x4("V", true, &id_mat);
 
     }
 
@@ -251,9 +258,19 @@ fn main() {
 
     voxel_renderer.manual_mut(&id).construct();
 
+    let mut last_frame_time = precise_time_ns();
+    let mut cur_frame_time = last_frame_time;
+
     while !glfw_window_should_close(win){
+
+        last_frame_time = cur_frame_time;
+        cur_frame_time = precise_time_ns();
+
+        let dt_ns = cur_frame_time - last_frame_time;
+
+
         update_win_dim_info(&mut win_info);
-        process_input(win);
+        process_input(win, dt_ns);
 
         gl_clear_color(0.2, 0.3, 0.3, 1.0);
         gl_clear(GL_COLOR_BUFFER_BIT);

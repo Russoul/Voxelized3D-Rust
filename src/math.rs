@@ -211,10 +211,22 @@ pub fn distance_point3_plane<T : Real>(point3 : &Vector3<T>, plane : &Plane<T>) 
 }
 
 
+//column-major
 pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> [f32;16]{
     [2.0 / (right - left), 0.0, 0.0, -(right + left) / (right - left),
      0.0, 2.0 / (top - bottom), 0.0, -(top + bottom) / (top - bottom),
      0.0, 0.0, -2.0 / (far - near), -(far + near) / (far - near),
      0.0, 0.0, 0.0, 1.0
     ]
+}
+
+//row-major ?
+pub fn view(pos : Vector3<f32>, target : Vector3<f32>, up : Vector3<f32>) -> Matrix4<f32>{
+    let za = (target - pos).normalize();
+    let xa = up.cross(&za).normalize();
+    let ya = za.cross(&xa);
+    Matrix4::<f32>::new(xa.x, ya.x, za.x, 0.0,
+                        xa.y, ya.y, za.y, 0.0,
+                        xa.z, ya.z, za.z, 0.0,
+                        -xa.dot(&pos), -ya.dot(&pos), -za.dot(&pos), 1.0)
 }
