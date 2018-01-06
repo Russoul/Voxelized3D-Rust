@@ -266,9 +266,25 @@ fn main() {
         GL_TRIANGLES,
         String::from("color"));
 
+    let mut renderer_lines = RendererVertFragDef::make(
+        VERTEX_SIZE_COLOR,
+        set_attrib_ptrs_color,
+        GL_LINES,
+        String::from("color")
+    );
+
+    let zero = Vector3::new(0.0, 0.0, 0.0);
+    let offset = Vector3::new(0.1, 0.1, 0.1);
     let red = Vector3::new(1.0, 0.0, 0.0);
     let green = Vector3::new(0.0, 1.0, 0.0);
+    let blue = Vector3::new(0.0, 0.0, 1.0);
+    let white = Vector3::new(1.0, 1.0, 1.0);
 
+    add_grid3_color(&mut renderer_lines, zero, Vector3::new(0.0, 0.0, -1.0), Vector3::new(0.0, 1.0, 0.0), 1.0, 8, white);
+
+    add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + red}, red);
+    add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + green}, green);
+    add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + blue}, blue);
 
     //====================================
     let BLOCK_SIZE : f32 = 0.125;
@@ -303,7 +319,7 @@ fn main() {
         p3: Vector3::new(0.5, 0.5,  -2.5)};
     add_triangle_color(&mut renderer, &test_tr, green);
 
-    let shader_data = |shader: &Program, win: &WindowInfo, camera : &Camera|{
+    fn shader_data(shader: &Program, win: &WindowInfo, camera : &Camera){
         let aspect = win.width as f32 / win.height as f32;
        /* let height = 16.0;
         let width = height;*/
@@ -326,17 +342,19 @@ fn main() {
     };
 
     let provider = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
-
+    let provider_lines = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
 
 
     let mut render_info = RenderInfo{renderer: Box::new(renderer), provider};//moved
+    let mut render_info_lines = RenderInfo{renderer: Box::new(renderer_lines), provider: provider_lines}; //moved
 
 
-    let id = voxel_renderer.push(RenderLifetime::Manual, RenderTransform::None, render_info).unwrap();
+    let id_trs = voxel_renderer.push(RenderLifetime::Manual, RenderTransform::None, render_info).unwrap();
+    let id_lns = voxel_renderer.push(RenderLifetime::Manual, RenderTransform::None, render_info_lines).unwrap();
 
 
-
-    voxel_renderer.manual_mut(&id).construct();
+    voxel_renderer.manual_mut(&id_trs).construct();
+    voxel_renderer.manual_mut(&id_lns).construct();
 
     let mut last_frame_time = precise_time_ns();
     let mut cur_frame_time = last_frame_time;
@@ -364,8 +382,11 @@ fn main() {
         check_for_gl_errors();
     }
 
-    voxel_renderer.manual_mut(&id).deconstruct();
-    voxel_renderer.manual_mut(&id).reset();
+    voxel_renderer.manual_mut(&id_trs).deconstruct();
+    voxel_renderer.manual_mut(&id_trs).reset();
+
+    voxel_renderer.manual_mut(&id_lns).deconstruct();
+    voxel_renderer.manual_mut(&id_lns).reset();
 
     glfw_terminate();
 }

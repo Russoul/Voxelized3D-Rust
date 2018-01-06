@@ -173,3 +173,78 @@ pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, co
     dat.vertex_count += 3;
 }
 
+fn add_vector_to_pool(dat : &mut RendererVertFragDef, vec : Vector3<f32>){
+    for i in vec.iter(){dat.vertex_pool.push(i.clone());}
+}
+
+pub fn add_line3_color(dat : &mut RendererVertFragDef, line : Line3<f32>, color : Vector3<f32>){
+    add_vector_to_pool(dat, line.start);
+    add_vector_to_pool(dat, color);
+    add_vector_to_pool(dat, line.end);
+    add_vector_to_pool(dat, color);
+
+    dat.index_pool.push(0 + dat.vertex_count);
+    dat.index_pool.push(1 + dat.vertex_count);
+
+    dat.vertex_count += 2;
+}
+
+pub fn add_grid3_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, tangent : Vector3<f32>, normal : Vector3<f32>, extent : f32, subdiv_num : u32, color : Vector3<f32>){
+    let right = tangent.cross(&normal) * extent;
+    let along = tangent * extent;
+    add_vector_to_pool(dat, center - right - along);
+    add_vector_to_pool(dat, color);
+    add_vector_to_pool(dat, center + right - along);
+    add_vector_to_pool(dat, color);
+    add_vector_to_pool(dat, center + right + along);
+    add_vector_to_pool(dat, color);
+    add_vector_to_pool(dat, center - right + along);
+    add_vector_to_pool(dat, color);
+
+    let a = extent / subdiv_num as f32;
+    //TODO inefficient loops(could be done in one)
+    for i in 1 .. 2 * subdiv_num{
+        add_vector_to_pool(dat, center - right * (extent - i as f32 * a) - along);
+        add_vector_to_pool(dat, color);
+    }
+
+    for i in 1 .. 2 * subdiv_num{
+        add_vector_to_pool(dat, center + right - along * (extent - i as f32 * a) );
+        add_vector_to_pool(dat, color);
+    }
+
+    for i in 1 .. 2 * subdiv_num{
+        add_vector_to_pool(dat, center + right * (extent - i as f32 * a) + along);
+        add_vector_to_pool(dat, color);
+    }
+
+    for i in 1 .. 2 * subdiv_num{
+        add_vector_to_pool(dat, center - right + along * (extent - i as f32 * a) );
+        add_vector_to_pool(dat, color);
+    }
+
+    dat.index_pool.push(0 + dat.vertex_count);
+    dat.index_pool.push(1 + dat.vertex_count);
+    dat.index_pool.push(1 + dat.vertex_count);
+    dat.index_pool.push(2 + dat.vertex_count);
+    dat.index_pool.push(2 + dat.vertex_count);
+    dat.index_pool.push(3 + dat.vertex_count);
+    dat.index_pool.push(3 + dat.vertex_count);
+    dat.index_pool.push(0 + dat.vertex_count);
+
+    let off0 : u32 = 4;
+    let off1 : u32 = subdiv_num * 2 - 1;
+
+    for i in 0..off1{
+        dat.index_pool.push(off0 + off1 + i + dat.vertex_count);
+        dat.index_pool.push(off0 + 4*off1 - i - 1 + dat.vertex_count);
+    }
+
+    for i in 0..off1{
+        dat.index_pool.push(off0 + i + dat.vertex_count);
+        dat.index_pool.push(off0 + 3*off1 - i - 1 + dat.vertex_count);
+    }
+
+    dat.vertex_count += 4 + 4 * (2 * subdiv_num - 1) //TODO ???
+}
+

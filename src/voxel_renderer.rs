@@ -60,7 +60,6 @@ impl Hash for RenderID{
 }
 
 
-
 pub struct RenderDataProvider<'a>{
     pub pre_render_state: Option<Box<Fn()->() + 'a>>,
     pub post_render_state: Option<Box<Fn()->() + 'a>>,
