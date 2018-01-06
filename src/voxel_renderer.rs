@@ -10,6 +10,7 @@ use std::rc::*;
 use std::cell::{RefCell,Cell};
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
+use na::*;
 
 pub enum RenderLifetime{
     Manual,
@@ -25,6 +26,13 @@ pub enum RenderTransform{
 #[derive(Clone, Copy)]
 pub enum RenderID{
     ID(usize),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Camera{
+    pub pos : Vector3<f32>,
+    pub look : Vector3<f32>, //TODO Unit<Vector3<f32>>
+    pub up : Vector3<f32>,
 }
 
 impl PartialEq for RenderID{
@@ -51,20 +59,22 @@ impl Hash for RenderID{
     }
 }
 
-pub struct RenderDataProvider{
-    pub pre_render_state: Option<Box<Fn()->()>>,
-    pub post_render_state: Option<Box<Fn()->()>>,
-    pub shader_data: Option<Box<Fn(&Program, &WindowInfo)->()>>,
+
+
+pub struct RenderDataProvider<'a>{
+    pub pre_render_state: Option<Box<Fn()->() + 'a>>,
+    pub post_render_state: Option<Box<Fn()->() + 'a>>,
+    pub shader_data: Option<Box<Fn(&Program, &WindowInfo, &Camera)->() + 'a>>,
 }
 
-pub struct RenderInfo{
+pub struct RenderInfo<'a>{
     pub renderer: Box<RendererVertFrag>,
-    pub provider: RenderDataProvider,
+    pub provider: RenderDataProvider<'a>,
 }
 
 pub struct VoxelRenderer<'a>{
-    pub lifetime_one_draw_renderers: HashMap<RenderID, RenderInfo>,
-    pub lifetime_manual_renderers: HashMap<RenderID, RenderInfo>,
+    pub lifetime_one_draw_renderers: HashMap<RenderID, RenderInfo<'a>>,
+    pub lifetime_manual_renderers: HashMap<RenderID, RenderInfo<'a>>,
 
     shaders: &'a HashMap<String, Program>,
     render_id_counter: Cell<usize>,
@@ -87,7 +97,7 @@ impl<'a> VoxelRenderer<'a>{
     }
 
 
-    pub fn draw(&mut self, win_info: &WindowInfo){
+    pub fn draw(&mut self, win_info: &WindowInfo, camera : &Camera){
         for render_info in self.lifetime_one_draw_renderers.values_mut(){
             let shader_name = &render_info.renderer.shader_name();
             let shader = self.shaders.get(shader_name).unwrap();
@@ -105,7 +115,7 @@ impl<'a> VoxelRenderer<'a>{
             if render_info.provider.shader_data.is_some(){
                 let ref opt = render_info.provider.shader_data;
                 match opt{
-                    &Some(ref x) => (*x)(shader, win_info),
+                    &Some(ref x) => (*x)(shader, win_info, camera),
                     _ => (),
                 }
 
@@ -148,7 +158,7 @@ impl<'a> VoxelRenderer<'a>{
             if render_info.provider.shader_data.is_some(){
                 let ref opt = render_info.provider.shader_data;
                 match opt{
-                    &Some(ref x) => (*x)(shader, win_info),
+                    &Some(ref x) => (*x)(shader, win_info, camera),
                     _ => (),
                 }
 
@@ -172,12 +182,12 @@ impl<'a> VoxelRenderer<'a>{
         }
     }
 
-    pub fn push(&mut self, life: RenderLifetime, trans: RenderTransform, mut renderer: RenderInfo) -> Result<RenderID, &'static str>{
+    pub fn push(&mut self, life: RenderLifetime, trans: RenderTransform, mut renderer: RenderInfo<'a>) -> Result<RenderID, &'static str>{
         if !self.shaders.contains_key(&renderer.renderer.shader_name()) {return Err("error: shader not found")}
 
 
 
-        fn provide_def(shader: &Program, win: &WindowInfo){ //shader will be already enabled
+        fn provide_def(shader: &Program, win: &WindowInfo, camera : &Camera){ //shader will be already enabled
             shader.set_float4x4("P",  false, &[
                 1.0,0.0,0.0,0.0,
                 0.0,1.0,0.0,0.0,
@@ -190,7 +200,7 @@ impl<'a> VoxelRenderer<'a>{
                 0.0,0.0,0.0,1.0]);
         }
 
-        fn provide_ui(shader: &Program, win: &WindowInfo){ //shader will be already enabled
+        fn provide_ui(shader: &Program, win: &WindowInfo, camera : &Camera){ //shader will be already enabled
             shader.set_float4x4("P",  false, &ortho(
                                                    0.0,
                                                    win.width as f32,
@@ -213,12 +223,12 @@ impl<'a> VoxelRenderer<'a>{
                 match renderer.provider.shader_data{
                     None => renderer.provider.shader_data = Some(Box::new(provide_def)),
                     Some(x) =>{
-                        let provide_def_combined = move |shader: &Program, win: &WindowInfo|{
-                            provide_def(shader, win);
-                            x(shader, win);
+                        let provide_def_combined = move |shader: &Program, win: &WindowInfo, camera : &Camera|{
+                            provide_def(shader, win, camera);
+                            x(shader, win, camera);
                         };
 
-                        renderer.provider.shader_data = Some(Box::new(provide_def_combined) as Box<Fn(&Program, &WindowInfo)>);
+                        renderer.provider.shader_data = Some(Box::new(provide_def_combined) as Box<Fn(&Program, &WindowInfo, &Camera)>);
                     }
                 }
             },
@@ -226,12 +236,12 @@ impl<'a> VoxelRenderer<'a>{
               match renderer.provider.shader_data{
                   None => renderer.provider.shader_data = Some(Box::new(provide_ui)),
                   Some(x) => {
-                      let provide_ui_combined = move |shader: &Program, win: &WindowInfo|{
-                          provide_ui(shader, win);
-                          x(shader, win);
+                      let provide_ui_combined = move |shader: &Program, win: &WindowInfo, camera : &Camera|{
+                          provide_ui(shader, win, camera);
+                          x(shader, win, camera);
                       };
 
-                      renderer.provider.shader_data = Some(Box::new(provide_ui_combined) as Box<Fn(&Program, &WindowInfo)>);
+                      renderer.provider.shader_data = Some(Box::new(provide_ui_combined) as Box<Fn(&Program, &WindowInfo, &Camera)>);
                   }
               }
             },

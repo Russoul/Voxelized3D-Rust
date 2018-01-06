@@ -220,13 +220,26 @@ pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) 
     ]
 }
 
-//row-major ?
-pub fn view(pos : Vector3<f32>, target : Vector3<f32>, up : Vector3<f32>) -> Matrix4<f32>{
-    let za = (target - pos).normalize();
-    let xa = up.cross(&za).normalize();
+//column-major
+pub fn perspective(fovy : f32, aspect : f32, near : f32, far : f32) -> Matrix4<f32>{
+    let top = near * (std::f32::consts::PI / 180.0 * fovy / 2.0).tan();
+    let bottom = -top;
+    let right = top * aspect;
+    let left = -right;
+    Matrix4::new(2.0 * near / (right - left), 0.0, (right + left) / (right - left), 0.0,
+                 0.0, 2.0 * near / (top - bottom), (top + bottom) / (top - bottom), 0.0,
+                 0.0, 0.0, -(far + near) / (far - near), -2.0 * far * near / (far - near),
+                 0.0, 0.0, -1.0, 0.0)
+}
+
+//column-major
+pub fn view_dir(pos : Vector3<f32>, look : Vector3<f32>, up : Vector3<f32>) -> Matrix4<f32>{
+    let za = -look;
+    let xa = up.cross(&za);
     let ya = za.cross(&xa);
-    Matrix4::<f32>::new(xa.x, ya.x, za.x, 0.0,
-                        xa.y, ya.y, za.y, 0.0,
-                        xa.z, ya.z, za.z, 0.0,
-                        -xa.dot(&pos), -ya.dot(&pos), -za.dot(&pos), 1.0)
+
+    Matrix4::new(xa.x, ya.x, za.x, 0.0,
+                 xa.y, ya.y, za.y, 0.0,
+                 xa.z, ya.z, za.z, 0.0,
+                 -dot(&xa,&pos), -dot(&ya,&pos), -dot(&za,&pos), 1.0).transpose()
 }

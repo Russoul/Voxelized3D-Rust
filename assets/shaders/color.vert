@@ -12,5 +12,5 @@ void main()
 {
 	colorFrag = color;
 	vec4 p = vec4(position.x, position.y, position.z, 1.0);
-    gl_Position = (P * (V * p));
+    gl_Position = P * V * p;
 }

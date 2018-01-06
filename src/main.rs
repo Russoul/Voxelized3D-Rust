@@ -8,8 +8,9 @@ extern crate time;
 
 
 
-use na::{Vector2,Vector3,Point2,Point3,Vector4};
-use na::geometry::{Similarity,Similarity2,Translation2};
+use na::{Vector2,Vector3,Point2,Point3,Vector4, Rotation3};
+use na::core::Unit;
+
 
 mod graphics;
 mod graphics_util;
@@ -81,7 +82,7 @@ fn update_win_dim_info(info: &mut WindowInfo){
     info.height = h;
 }
 
-fn process_input(win : *mut GlfwWindow, dt_ns : u64){
+fn process_input(win : *mut GlfwWindow, dt_ns : u64, camera : &mut Camera){
     if glfw_get_key(win, GLFW_KEY_ESCAPE) == GLFW_PRESS{
         glfw_set_window_should_close(win, true);
     }
@@ -103,9 +104,80 @@ fn process_input(win : *mut GlfwWindow, dt_ns : u64){
     }
 
 
+    let dt_s : f32 = dt_ns as f32 / 1000000000.0;
+
     if glfw_get_key(win, GLFW_KEY_W) == GLFW_PRESS{
+        camera.pos += camera.look * dt_s as f32;
 
     }
+
+    if glfw_get_key(win, GLFW_KEY_S) == GLFW_PRESS{
+        camera.pos -= camera.look * dt_s as f32;
+    }
+
+    if glfw_get_key(win, GLFW_KEY_A) == GLFW_PRESS{
+        let right = camera.look.cross(&camera.up);
+
+        camera.pos -= right * dt_s as f32;
+    }
+
+    if glfw_get_key(win, GLFW_KEY_D) == GLFW_PRESS{
+        let right = camera.look.cross(&camera.up);
+
+        camera.pos += right * dt_s as f32;
+    }
+
+    if glfw_get_key(win, GLFW_KEY_Q) == GLFW_PRESS{
+
+        camera.pos += camera.up * dt_s as f32;
+    }
+
+    if glfw_get_key(win, GLFW_KEY_Z) == GLFW_PRESS{
+
+        camera.pos -= camera.up * dt_s as f32;
+    }
+
+    if glfw_get_key(win, GLFW_KEY_LEFT) == GLFW_PRESS{
+
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.up), std::f32::consts::PI * dt_s / 2.0);
+        camera.look = (mat * camera.look).normalize();
+    }
+    if glfw_get_key(win, GLFW_KEY_RIGHT) == GLFW_PRESS{
+
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.up), -std::f32::consts::PI * dt_s / 2.0);
+        camera.look = (mat * camera.look).normalize();
+    }
+    if glfw_get_key(win, GLFW_KEY_KP_0) == GLFW_PRESS{
+
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.look), std::f32::consts::PI * dt_s / 2.0);
+        camera.up = (mat * camera.up).normalize();
+    }
+    if glfw_get_key(win, GLFW_KEY_KP_DECIMAL) == GLFW_PRESS{
+
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.look), -std::f32::consts::PI * dt_s / 2.0);
+        camera.up = (mat * camera.up).normalize();
+    }
+    if glfw_get_key(win, GLFW_KEY_RIGHT) == GLFW_PRESS{
+
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.up), -std::f32::consts::PI * dt_s / 2.0);
+        camera.look = (mat * camera.look).normalize();
+    }
+    if glfw_get_key(win, GLFW_KEY_UP) == GLFW_PRESS{
+        let right = camera.look.cross(&camera.up);
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(right), std::f32::consts::PI * dt_s / 2.0);
+        camera.look = (mat * camera.look).normalize();
+        camera.up = (mat * camera.up).normalize();
+    }
+    if glfw_get_key(win, GLFW_KEY_DOWN) == GLFW_PRESS{
+        let right = camera.look.cross(&camera.up);
+        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(right), -std::f32::consts::PI * dt_s / 2.0);
+        camera.look = (mat * camera.look).normalize();
+        camera.up = (mat * camera.up).normalize();
+    }
+
+   /* println!("{}", camera.pos);
+    println!("{}", camera.look.norm());
+    println!("{}", camera.up.norm());*/
 }
 
 
@@ -146,6 +218,10 @@ fn load_shaders_vf() -> HashMap<String, Program>{
     map
 }
 
+
+
+
+
 fn main() {
     let def_width: usize = 800;
     let def_height: usize = 600;
@@ -174,8 +250,13 @@ fn main() {
     glfw_set_input_mode(win, GLFW_STICKY_KEYS, 1);
 
     let shaders = load_shaders_vf();
+
+    let mut camera = Camera{pos : Vector3::new(0.0,0.0,0.0), look : Vector3::new(0.0,0.0,-1.0), up : Vector3::new(0.0, 1.0, 0.0)};
+
+
     let mut voxel_renderer = VoxelRenderer::new(&shaders);
     let mut win_info = WindowInfo{width: def_width, height: def_height, handle: win}; //will be updated each frame
+
 
 
 
@@ -186,7 +267,7 @@ fn main() {
         String::from("color"));
 
     let red = Vector3::new(1.0, 0.0, 0.0);
-
+    let green = Vector3::new(0.0, 1.0, 0.0);
 
 
     //====================================
@@ -208,42 +289,41 @@ fn main() {
     println!("generated {} triangles", contour_data.triangles.len());
 
     for tr in &contour_data.triangles{
-        //add_triangle_color(&mut renderer, tr, Vector3::new(1.0,1.0,0.0))
+        add_triangle_color(&mut renderer, tr, Vector3::new(1.0,1.0,0.0))
     }
     //===================================
 
 
     //dc::test_sample_normal();
 
-    add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(4.0, 4.0, 4.0), p2 : Vector3::new(5.0, 4.0, 4.0), p3 : Vector3::new(4.0, 5.0, 4.0)}, red);
+    //add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(4.0, 4.0, 4.0), p2 : Vector3::new(5.0, 4.0, 4.0), p3 : Vector3::new(4.0, 5.0, 4.0)}, red);
 
-    let test_tr = Triangle3{p1: Vector3::new(0.0, 0.0, -2.0),
-        p2: Vector3::new(4.0, 0.0,  -2.0),
-        p3: Vector3::new(4.0, 4.0,  -2.0)};
-    add_triangle_color(&mut renderer, &test_tr, Vector3::new(1.0,0.0,0.0));
+    let test_tr = Triangle3{p1: Vector3::new(0.0, 0.0, -2.5),
+        p2: Vector3::new(0.5, 0.0,  -2.5),
+        p3: Vector3::new(0.5, 0.5,  -2.5)};
+    add_triangle_color(&mut renderer, &test_tr, green);
 
-    fn shader_data(shader: &Program, win: &WindowInfo){
+    let shader_data = |shader: &Program, win: &WindowInfo, camera : &Camera|{
         let aspect = win.width as f32 / win.height as f32;
-        let height = 16.0;
-        let width = height;
+       /* let height = 16.0;
+        let width = height;*/
         let id_mat = [
             1.0,0.0,0.0,0.0,
             0.0,1.0,0.0,0.0,
             0.0,0.0,1.0,0.0,
             0.0,0.0,0.0,1.0];
 
-        let cam_world_pos = Vector3::new(0.0, 0.0, 0.0);
-        let m = na::Translation::from_vector(-cam_world_pos);
 
-        let persp = na::Perspective3::new(aspect, 160.0, 0.1, 16.0).to_homogeneous();
-        let view = view(cam_world_pos, Vector3::new(4.0 as f32,4.0, 4.0), Vector3::new(0.0, 1.0, 0.0));
 
+
+        let persp = perspective(90.0, aspect, 0.1, 16.0);
+        let view = view_dir(camera.pos, camera.look, camera.up);
 
 
         shader.set_float4x4("P", false, persp.as_slice());
-        shader.set_float4x4("V", true, &id_mat);
+        shader.set_float4x4("V", false, view.as_slice());
 
-    }
+    };
 
     let provider = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
 
@@ -270,12 +350,12 @@ fn main() {
 
 
         update_win_dim_info(&mut win_info);
-        process_input(win, dt_ns);
+        process_input(win, dt_ns, &mut camera);
 
         gl_clear_color(0.2, 0.3, 0.3, 1.0);
         gl_clear(GL_COLOR_BUFFER_BIT);
 
-        voxel_renderer.draw(&win_info);
+        voxel_renderer.draw(&win_info, &camera);
 
 
         glfw_swap_buffers(win);

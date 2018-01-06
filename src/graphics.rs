@@ -127,7 +127,7 @@ extern {
     fn glfwPollEvents();
     fn glfwGetKey(win : *mut GlfwWindow, key : usize) -> usize;
     fn glfwSetWindowShouldClose(win : *mut GlfwWindow, val : bool);
-    fn glfwSetInputMode(win : *mut GlfwWindow, mode : isize, value : isize);
+    fn glfwSetInputMode(win : *mut GlfwWindow, mode : usize, value : isize);
 
     fn glfwGetWindowSize(win : *mut GlfwWindow, w : *mut usize, h : *mut usize);
     fn glfwGetVideoMode(mon : *mut GlfwMonitor) -> *mut GlfwVidMode;
@@ -181,7 +181,7 @@ extern {
 
 }
 
-pub fn glfw_set_input_mode(win : *mut GlfwWindow, mode : isize, value : isize){
+pub fn glfw_set_input_mode(win : *mut GlfwWindow, mode : usize, value : isize){
     unsafe{
         glfwSetInputMode(win, mode, value);
     }
