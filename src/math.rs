@@ -42,12 +42,14 @@ pub struct Plane<T : Scalar + Copy> {
     pub normal : Vector3<T>,
 }
 
+//axis aligned
 #[derive(Clone, Copy, Debug)]
 pub struct Square2<T : Scalar>{
     pub center : Vector2<T>,
     pub extent : T,
 }
 
+//axis aligned
 #[derive(Clone, Copy, Debug)]
 pub struct Square3<T : Scalar>{
     pub center : Vector3<T>,

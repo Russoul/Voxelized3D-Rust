@@ -286,6 +286,8 @@ fn main() {
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + green}, green);
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + blue}, blue);
 
+    add_square3_bounds_color(&mut renderer_lines, Square3{center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
+
     //====================================
     let BLOCK_SIZE : f32 = 0.125;
     let CHUNK_SIZE : usize = 128;
