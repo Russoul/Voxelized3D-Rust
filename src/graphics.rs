@@ -10,6 +10,7 @@ use std::ffi::CStr;
 use std::ptr;
 use std::str;
 use std;
+use na;
 
 pub struct WindowInfo{
     pub width: usize,
@@ -73,6 +74,11 @@ impl Program{
     pub fn set_float3(&self, name: &str, val1: f32, val2: f32, val3: f32){
         self.enable();
         gl_uniform3f(self.get_uniform(name), val1, val2, val3);
+    }
+
+    pub fn set_vec3f(&self, name: &str, vec : na::Vector3<f32>){
+        self.enable();
+        gl_uniform3f(self.get_uniform(name), vec.x, vec.y, vec.z);
     }
 
     pub fn set_float4(&self, name: &str, val1: f32, val2: f32, val3: f32, val4: f32){

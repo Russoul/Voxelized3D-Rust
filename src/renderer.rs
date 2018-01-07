@@ -32,6 +32,7 @@ pub struct RendererVertFragDef{
 
 
 pub const VERTEX_SIZE_COLOR : usize = 6;
+pub const VERTEX_SIZE_COLOR_NORMAL : usize = 9;
 
 pub fn set_attrib_ptrs_color(_:&mut RendererVertFragDef){
     gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR * 4,
@@ -41,6 +42,21 @@ pub fn set_attrib_ptrs_color(_:&mut RendererVertFragDef){
     gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
+
+}
+
+pub fn set_attrib_ptrs_color_normal(_:&mut RendererVertFragDef){
+    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR_NORMAL * 4,
+                             0);
+    gl_enable_vertex_attrib_array(0);
+
+    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR_NORMAL * 4,
+                             3 * 4);
+    gl_enable_vertex_attrib_array(1);
+
+    gl_vertex_attrib_pointer(2, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR_NORMAL * 4,
+                             6 * 4);
+    gl_enable_vertex_attrib_array(2);
 
 }
 
@@ -164,6 +180,52 @@ pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, co
     dat.vertex_pool.push(color[0]);
     dat.vertex_pool.push(color[1]);
     dat.vertex_pool.push(color[2]);
+
+    dat.index_pool.push(dat.vertex_count + 0);
+    dat.index_pool.push(dat.vertex_count + 1);
+    dat.index_pool.push(dat.vertex_count + 2);
+
+
+    dat.vertex_count += 3;
+}
+
+
+pub fn add_triangle_color_normal(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: Vector3<f32>, normal : &Vector3<f32>){
+    dat.vertex_pool.push(tr.p1[0]);
+    dat.vertex_pool.push(tr.p1[1]);
+    dat.vertex_pool.push(tr.p1[2]);
+
+    dat.vertex_pool.push(color[0]);
+    dat.vertex_pool.push(color[1]);
+    dat.vertex_pool.push(color[2]);
+
+    dat.vertex_pool.push(normal[0]);
+    dat.vertex_pool.push(normal[1]);
+    dat.vertex_pool.push(normal[2]);
+
+    dat.vertex_pool.push(tr.p2[0]);
+    dat.vertex_pool.push(tr.p2[1]);
+    dat.vertex_pool.push(tr.p2[2]);
+
+    dat.vertex_pool.push(color[0]);
+    dat.vertex_pool.push(color[1]);
+    dat.vertex_pool.push(color[2]);
+
+    dat.vertex_pool.push(normal[0]);
+    dat.vertex_pool.push(normal[1]);
+    dat.vertex_pool.push(normal[2]);
+
+    dat.vertex_pool.push(tr.p3[0]);
+    dat.vertex_pool.push(tr.p3[1]);
+    dat.vertex_pool.push(tr.p3[2]);
+
+    dat.vertex_pool.push(color[0]);
+    dat.vertex_pool.push(color[1]);
+    dat.vertex_pool.push(color[2]);
+
+    dat.vertex_pool.push(normal[0]);
+    dat.vertex_pool.push(normal[1]);
+    dat.vertex_pool.push(normal[2]);
 
     dat.index_pool.push(dat.vertex_count + 0);
     dat.index_pool.push(dat.vertex_count + 1);

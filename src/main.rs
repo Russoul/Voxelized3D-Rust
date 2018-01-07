@@ -127,12 +127,12 @@ fn process_input(win : *mut GlfwWindow, dt_ns : u64, camera : &mut Camera){
         camera.pos += right * dt_s as f32;
     }
 
-    if glfw_get_key(win, GLFW_KEY_Q) == GLFW_PRESS{
+    if glfw_get_key(win, GLFW_KEY_SPACE) == GLFW_PRESS{
 
         camera.pos += camera.up * dt_s as f32;
     }
 
-    if glfw_get_key(win, GLFW_KEY_Z) == GLFW_PRESS{
+    if glfw_get_key(win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS{
 
         camera.pos -= camera.up * dt_s as f32;
     }
@@ -260,11 +260,11 @@ fn main() {
 
 
 
-    let mut renderer = RendererVertFragDef::make(
-        VERTEX_SIZE_COLOR,
-        set_attrib_ptrs_color,
+    let mut renderer_tr_light = RendererVertFragDef::make(
+        VERTEX_SIZE_COLOR_NORMAL,
+        set_attrib_ptrs_color_normal,
         GL_TRIANGLES,
-        String::from("color"));
+        String::from("lighting"));
 
     let mut renderer_lines = RendererVertFragDef::make(
         VERTEX_SIZE_COLOR,
@@ -288,11 +288,17 @@ fn main() {
 
     add_square3_bounds_color(&mut renderer_lines, Square3{center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
 
+
+
+
     //====================================
     let BLOCK_SIZE : f32 = 0.125;
     let CHUNK_SIZE : usize = 128;
 
     let mut grid = VoxelGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+
+
+
 
     let offset = Vector3::new(0.0, 0.0, 0.0);
 
@@ -301,25 +307,20 @@ fn main() {
 
     let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
         dc::fill_in_grid(&mut grid, &sphere1, Vector3::new(0.0, 0.0, 0.0));
-        dc::make_contour(&grid, &sphere1, 32)
+        dc::make_contour(&grid, &sphere1, 32, &mut renderer_lines)
     });
+
+    shaders.get("lighting").unwrap().enable();
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,zero);
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,red + green);
 
     println!("generated {} triangles", contour_data.triangles.len());
 
-    for tr in &contour_data.triangles{
-        add_triangle_color(&mut renderer, tr, Vector3::new(1.0,1.0,0.0))
+    for i in 0..contour_data.triangles.len(){
+        add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], Vector3::new(1.0,1.0,0.0), &contour_data.triangle_normals[i / 2]);
     }
     //===================================
 
-
-    //dc::test_sample_normal();
-
-    //add_triangle_color(&mut renderer, &Triangle3{p1 : Vector3::new(4.0, 4.0, 4.0), p2 : Vector3::new(5.0, 4.0, 4.0), p3 : Vector3::new(4.0, 5.0, 4.0)}, red);
-
-    let test_tr = Triangle3{p1: Vector3::new(0.0, 0.0, -2.5),
-        p2: Vector3::new(0.5, 0.0,  -2.5),
-        p3: Vector3::new(0.5, 0.5,  -2.5)};
-    add_triangle_color(&mut renderer, &test_tr, green);
 
     fn shader_data(shader: &Program, win: &WindowInfo, camera : &Camera){
         let aspect = win.width as f32 / win.height as f32;
@@ -347,7 +348,7 @@ fn main() {
     let provider_lines = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
 
 
-    let mut render_info = RenderInfo{renderer: Box::new(renderer), provider};//moved
+    let mut render_info = RenderInfo{renderer: Box::new(renderer_tr_light), provider};//moved
     let mut render_info_lines = RenderInfo{renderer: Box::new(renderer_lines), provider: provider_lines}; //moved
 
 
@@ -393,7 +394,7 @@ fn main() {
     glfw_terminate();
 }
 
-fn calc_qef(point : &Vector2<f32>, lines : &Vec<Line2<f32>>) -> f32{
+/*fn calc_qef(point : &Vector2<f32>, lines : &Vec<Line2<f32>>) -> f32{
     let mut qef : f32 = 0.0;
     for line in lines{
         let dist = distance_point2_line2(point, line);
@@ -736,5 +737,5 @@ fn fill_in_grid(vg : &mut VoxelGrid2<f32>, f : &DenFn2<f32>, point : Vector2<f32
             vg.grid[y * vx + x] = f(point + Vector2::new(vg.a * (x as f32), vg.a * (y as f32)));
         }
     }
-}
+}*/
 

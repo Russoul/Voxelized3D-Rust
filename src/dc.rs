@@ -1,6 +1,7 @@
 use std;
 use na::*;
 use math::*;
+use renderer::*;
 
 fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
     let mut qef : f32 = 0.0;
@@ -206,10 +207,11 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
     }
 }
 
-pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize) -> ContourData{
+//TODO renderer is for debug only
+pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, renderer : &mut RendererVertFragDef) -> ContourData{
 
     //TODO inefficient Vec::new() creation vvv
-    let mut contour_data = ContourData{lines : Vec::new(), triangles : Vec::new(), features : vec![None;vg.size_x * vg.size_y * vg.size_z], normals : vec![None;vg.size_x * vg.size_y * vg.size_z]};
+    let mut contour_data = ContourData{lines : Vec::new(), triangles : Vec::new(), triangle_normals : Vec::new(), features : vec![None;vg.size_x * vg.size_y * vg.size_z], normals : vec![None;vg.size_x * vg.size_y * vg.size_z]};
     let mut cache_already_calculated = vec![false;vg.size_x * vg.size_y * vg.size_z]; //this cache is used to mark cubes that have already been calculated for feature vertex
 
     {
@@ -259,6 +261,8 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize) -
                             let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
                             let normal = contour_data.normals[t].unwrap();
 
+                            
+                            //TODO incorrect normals in some places 
                             if !const_sign(p03, p13){
 
                                 let f1 = cached_make(x + 1, y, z, &mut contour_data).unwrap();
@@ -267,11 +271,16 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize) -
                                 //f1 && f2 && f3 all should be non-empty, as they all exhibit a sign change at least on their common edge
 
                                 //this is needed to calculate the direction of the resulting quad correctly
-                                let dir = (f2 - f0).cross(&(f3 - f0));
+                                let dir = (f2 - f0).cross(&(f3 - f0)).normalize();
+                                add_line3_color(renderer, Line3{start : f0, end : f0 + dir}, Vector3::new(1.0, 1.0, 1.0));
                                 if dir.dot(&normal) > 0.0{ //should not be zero at any time
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f1, p3 : f2});
+                                    contour_data.triangle_normals.push(dir); //TODO inefficient
                                 }else{
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f1});
+                                    contour_data.triangle_normals.push(-dir);
                                 }
                             }
                             if !const_sign(p12, p13){
@@ -281,11 +290,16 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize) -
                                 //f1 && f2 && f3 all should be non-empty, as they all exhibit a sign change at least on their common edge
 
                                 //this is needed to calculate the direction of the resulting quad correctly
-                                let dir = (f2 - f0).cross(&(f3 - f0));
+                                let dir = (f2 - f0).cross(&(f3 - f0)).normalize();
+                                add_line3_color(renderer, Line3{start : f0, end : f0 + dir}, Vector3::new(1.0, 1.0, 1.0));
                                 if dir.dot(&normal) > 0.0{ //should not be zero at any time
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f1, p3 : f2});
+                                    contour_data.triangle_normals.push(dir);
                                 }else{
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f1});
+                                    contour_data.triangle_normals.push(-dir);
                                 }
                             }
                             if !const_sign(p11, p13){
@@ -295,11 +309,16 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize) -
                                 //f1 && f2 && f3 all should be non-empty, as they all exhibit a sign change at least on their common edge
 
                                 //this is needed to calculate the direction of the resulting quad correctly
-                                let dir = (f2 - f0).cross(&(f3 - f0));
+                                let dir = (f2 - f0).cross(&(f3 - f0)).normalize();
+                                add_line3_color(renderer, Line3{start : f0, end : f0 + dir}, Vector3::new(1.0, 1.0, 1.0));
                                 if dir.dot(&normal) > 0.0{ //should not be zero at any time
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f1, p3 : f2});
+                                    contour_data.triangle_normals.push(dir);
                                 }else{
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
+                                    contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f1});
+                                    contour_data.triangle_normals.push(-dir);
                                 }
                             }
                         },
@@ -333,6 +352,7 @@ pub fn fill_in_grid(vg : &mut VoxelGrid3<f32>, f : &DenFn3<f32>, offset : Vector
 pub struct ContourData{ // + hermite data ? (exact points of intersection of the surface with each edge that exhibits a sign change + normals for each of those points)
     pub lines : Vec<Line3<f32>>,
     pub triangles : Vec<Triangle3<f32>>,
+    pub triangle_normals : Vec<Vector3<f32>>,
     pub features : Vec<Option<Vector3<f32>>>,
     pub normals : Vec<Option<Vector3<f32>>>, //normal to the surface calculated at feature vertex
 }
