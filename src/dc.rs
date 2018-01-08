@@ -6,8 +6,8 @@ use renderer::*;
 fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
     let mut qef : f32 = 0.0;
     for plane in planes{
-        let dist = distance_point3_plane(point, plane);
-        qef += dist * dist;
+        let dist_signed = plane.normal.dot(&(point - plane.point));
+        qef += dist_signed * dist_signed;
     }
 
     qef
@@ -70,11 +70,19 @@ fn sample_intersection_brute(line : Line3<f32>, n : usize, f : &DenFn3<f32>) -> 
 }
 
 
-pub fn sample_normal(sphere : &Sphere<f32>, n : usize, f : &DenFn3<f32>) -> Vector3<f32>{
+//why haven't I come up with this one at the start ? :)
+pub fn sample_normal(point : &Vector3<f32>, eps : f32, f : &DenFn3<f32>) -> Vector3<f32>{
+    Vector3::new( f(Vector3::new(point.x + eps, point.y, point.z)) - f(Vector3::new(point.x - eps, point.y, point.z)),
+                  f(Vector3::new(point.x, point.y + eps, point.z)) - f(Vector3::new(point.x, point.y - eps, point.z)),
+                  f(Vector3::new(point.x, point.y, point.z + eps)) - f(Vector3::new(point.x, point.y, point.z - eps)) ).normalize()
+}
+
+//works not so well
+pub fn sample_normal1(sphere : &Sphere<f32>, n : usize, f : &DenFn3<f32>) -> Vector3<f32>{
 
     let den_at_center = f(sphere.center);
 
-    let mut best = std::f32::MIN;
+    let mut best = 0.0;
     let mut normal_point = sphere.center;
 
     let slice2_ = std::f32::consts::PI / n as f32;
@@ -93,7 +101,7 @@ pub fn sample_normal(sphere : &Sphere<f32>, n : usize, f : &DenFn3<f32>) -> Vect
 
             let point = sphere.center + Vector3::new(x,y,z);
             let den = f(point);
-            let attempt = (den - den_at_center);
+            let attempt = den - den_at_center;
             if attempt > best{
                 best = attempt;
                 normal_point = point;
@@ -110,7 +118,7 @@ pub fn test_sample_normal(){
     let test_sph = Sphere{center : Vector3::new(0.0, 0.0, 0.0), rad : 1.0};
     let test_point = Sphere{center : Vector3::new(0.0, 0.0, 1.0), rad : 0.01};
     let test_solid = mk_sphere(test_sph);
-    let res = sample_normal(&test_point, 100, &test_solid);
+    let res = sample_normal(&test_point.center, 0.001, &test_solid);
 
     println!("{}", res); //result should approach {0.0,0.0,1.0} increasing accuracy
 }
@@ -170,7 +178,8 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
                 if (edge_info & edge_id) > 0{
                     let ip = sample_intersection_brute(Line3{start : v_a, end : v_b}, accuracy, f);//intersecion point
                     let full = if p_a <= 0.0 {v_a} else {v_b};
-                    let normal = sample_normal(&Sphere{center : ip, rad : rad_for_normal}, accuracy, f);
+                    //let normal = sample_normal(&Sphere{center : ip, rad : rad_for_normal}, accuracy, f);
+                    let normal = sample_normal(&ip, rad_for_normal, f);
                     planes.push(Plane{point : ip, normal});
 
                     //calculate feature vertices of 3 other cubes containing this edge then create a quad from maximum of 4 those feature vertices.
@@ -199,7 +208,9 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
         let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
 
         contour_data.features[t] = Some(feature_vertex);
-        contour_data.normals[t] = Some(sample_normal(&Sphere{center : feature_vertex, rad : rad_for_normal}, accuracy, f));
+        //contour_data.normals[t] = Some(sample_normal(&Sphere{center : feature_vertex, rad : rad_for_normal}, accuracy, f));
+        contour_data.normals[t] = Some(sample_normal(&feature_vertex, vg.a / 100.0, f));
+
 
         Some(feature_vertex)
     }else{
@@ -207,8 +218,8 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
     }
 }
 
-//TODO renderer is for debug only
-pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, renderer : &mut RendererVertFragDef) -> ContourData{
+//TODO debug_renderer is for debug only
+pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, debug_renderer : &mut RendererVertFragDef, debug_sphere : &Sphere<f32>) -> ContourData{
 
     //TODO inefficient Vec::new() creation vvv
     let mut contour_data = ContourData{lines : Vec::new(), triangles : Vec::new(), triangle_normals : Vec::new(), features : vec![None;vg.size_x * vg.size_y * vg.size_z], normals : vec![None;vg.size_x * vg.size_y * vg.size_z]};
@@ -232,12 +243,12 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, r
         for z in 0..vg.size_z{
             for y in 0..vg.size_y {
                 for x in 0..vg.size_x {
-                    let p00 = vg.get(x, y, z);
-                    let p01 = vg.get(x + 1, y, z);
-                    let p02 = vg.get(x, y + 1, z);
+                    //let p00 = vg.get(x, y, z);
+                    //let p01 = vg.get(x + 1, y, z);
+                    //let p02 = vg.get(x, y + 1, z);
                     let p03 = vg.get(x + 1, y + 1, z);
 
-                    let p10 = vg.get(x, y, z + 1);
+                    //let p10 = vg.get(x, y, z + 1);
                     let p11 = vg.get(x + 1, y, z + 1);
                     let p12 = vg.get(x, y + 1, z + 1);
                     let p13 = vg.get(x + 1, y + 1, z + 1);
@@ -260,7 +271,10 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, r
                         Some(f0) => {
                             let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
                             let normal = contour_data.normals[t].unwrap();
+                            let debug_real_normal = f0 - debug_sphere.center;
 
+
+                            
                             
                             //TODO incorrect normals in some places 
                             if !const_sign(p03, p13){
@@ -272,14 +286,26 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, r
 
                                 //this is needed to calculate the direction of the resulting quad correctly
                                 let dir = (f2 - f0).cross(&(f3 - f0)).normalize();
-                                add_line3_color(renderer, Line3{start : f0, end : f0 + dir}, Vector3::new(1.0, 1.0, 1.0));
+                                
                                 if dir.dot(&normal) > 0.0{ //should not be zero at any time
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f1, p3 : f2});
+                                    //add_line3_color(debug_renderer, Line3{start : f0, end : f0 + dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                    //TODO debug
+                                    /* if (dir.dot(&debug_real_normal) <= 0.0) {
+                                        println!("bad normal at {} {} {} {}", 1, x, y, z);
+                                    } */
                                     contour_data.triangle_normals.push(dir); //TODO inefficient
                                 }else{
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f1});
+                                    //add_line3_color(debug_renderer, Line3{start : f0, end : f0 - dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                   /*  if (-dir.dot(&debug_real_normal) <= 0.0) {
+                                        add_square3_bounds_color(debug_renderer, vg.square3(x, y, z), Vector3::new(1.0, 0.0, 0.0));
+                                        add_line3_color(debug_renderer, Line3{start : f0, end : f0 - dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                        add_line3_color(debug_renderer, Line3{start : f0, end : f0 - normal.normalize()}, Vector3::new(0.0, 0.0, 0.0));
+                                        println!("bad normal at {} {}", 2, -dir.dot(&debug_real_normal));
+                                    } */
                                     contour_data.triangle_normals.push(-dir);
                                 }
                             }
@@ -291,14 +317,25 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, r
 
                                 //this is needed to calculate the direction of the resulting quad correctly
                                 let dir = (f2 - f0).cross(&(f3 - f0)).normalize();
-                                add_line3_color(renderer, Line3{start : f0, end : f0 + dir}, Vector3::new(1.0, 1.0, 1.0));
                                 if dir.dot(&normal) > 0.0{ //should not be zero at any time
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f1, p3 : f2});
+                                    //add_line3_color(debug_renderer, Line3{start : f0, end : f0 + dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                   /*  if (dir.dot(&debug_real_normal) <= 0.0) {
+                                        println!("bad normal at {} {} {} {}", 3, x, y, z);
+                                    } */
                                     contour_data.triangle_normals.push(dir);
                                 }else{
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f1});
+                                    //add_line3_color(debug_renderer, Line3{start : f0, end : f0 - dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                   /*  if (-dir.dot(&debug_real_normal) <= 0.0) {
+                                        add_square3_bounds_color(debug_renderer, vg.square3(x, y, z), Vector3::new(1.0, 0.0, 0.0));
+                                        add_line3_color(debug_renderer, Line3{start : f0, end : f0 - dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                        add_line3_color(debug_renderer, Line3{start : f0, end : f0 - normal.normalize()}, Vector3::new(0.0, 0.0, 0.0));
+                                        
+                                        println!("bad normal at {} {}", 4, -dir.dot(&debug_real_normal));
+                                    } */
                                     contour_data.triangle_normals.push(-dir);
                                 }
                             }
@@ -310,16 +347,25 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, r
 
                                 //this is needed to calculate the direction of the resulting quad correctly
                                 let dir = (f2 - f0).cross(&(f3 - f0)).normalize();
-                                add_line3_color(renderer, Line3{start : f0, end : f0 + dir}, Vector3::new(1.0, 1.0, 1.0));
                                 if dir.dot(&normal) > 0.0{ //should not be zero at any time
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f3});
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f1, p3 : f2});
+                                    //add_line3_color(debug_renderer, Line3{start : f0, end : f0 + dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                   /*  if (dir.dot(&debug_real_normal) <= 0.0) {
+                                        println!("bad normal at {} {} {} {}", 5, x, y, z);
+                                    } */
                                     contour_data.triangle_normals.push(dir);
-                                }else{
+                                } else{
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f3, p3 : f2});
                                     contour_data.triangles.push(Triangle3{p1 : f0, p2 : f2, p3 : f1});
+                                    //add_line3_color(debug_renderer, Line3{start : f0, end : f0 - dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                   /*  if (-dir.dot(&debug_real_normal) <= 0.0) {
+                                        add_square3_bounds_color(debug_renderer, vg.square3(x, y, z), Vector3::new(1.0, 0.0, 0.0));
+                                        add_line3_color(debug_renderer, Line3{start : f0, end : f0 - dir * 0.1}, Vector3::new(1.0, 1.0, 1.0));
+                                        println!("bad normal at {} {} {} {}", 6, x, y, z);
+                                    } */
                                     contour_data.triangle_normals.push(-dir);
-                                }
+                                } 
                             }
                         },
                     }

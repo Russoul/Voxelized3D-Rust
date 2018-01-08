@@ -144,6 +144,8 @@ extern {
     fn glClearColor(r : f32, g : f32, b : f32, a : f32);
     fn glClear(val : usize);
     fn glGetString(val : usize) -> *mut c_char;
+    fn glEnable(val : usize);
+    fn glDisable(val : usize);
 
     fn glCreateProgram()->usize;
     fn glCreateShader(typee: usize)->usize;
@@ -185,6 +187,14 @@ extern {
     fn glGetIntegerv(param: usize, out: *mut isize);
     fn glGetError() -> usize;
 
+}
+
+pub fn gl_enable(val : usize){
+    unsafe{glEnable(val);}
+}
+
+pub fn gl_disable(val : usize){
+    unsafe{glDisable(val);}
 }
 
 pub fn glfw_set_input_mode(win : *mut GlfwWindow, mode : usize, value : isize){

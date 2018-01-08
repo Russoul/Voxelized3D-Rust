@@ -302,17 +302,20 @@ fn main() {
 
     let offset = Vector3::new(0.0, 0.0, 0.0);
 
-    let sphere1 = mk_sphere(Sphere{center : Vector3::new(4.0 as f32,4.0, 4.0) + offset, rad : 2.0});
+    let sphere1_ = Sphere{center : Vector3::new(4.0 as f32,4.0, 4.0) + offset, rad : 2.0};
+    let sphere1 = mk_sphere(sphere1_.clone());
 
+
+    dc::test_sample_normal();
 
     let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
         dc::fill_in_grid(&mut grid, &sphere1, Vector3::new(0.0, 0.0, 0.0));
-        dc::make_contour(&grid, &sphere1, 32, &mut renderer_lines)
+        dc::make_contour(&grid, &sphere1, 32, &mut renderer_lines, &sphere1_)
     });
 
     shaders.get("lighting").unwrap().enable();
     shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,zero);
-    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,red + green);
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green) * 5.0);
 
     println!("generated {} triangles", contour_data.triangles.len());
 
@@ -362,7 +365,11 @@ fn main() {
     let mut last_frame_time = precise_time_ns();
     let mut cur_frame_time = last_frame_time;
 
+
+   gl_enable(GL_DEPTH_TEST);
     while !glfw_window_should_close(win){
+
+        gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
         last_frame_time = cur_frame_time;
         cur_frame_time = precise_time_ns();
@@ -374,7 +381,6 @@ fn main() {
         process_input(win, dt_ns, &mut camera);
 
         gl_clear_color(0.2, 0.3, 0.3, 1.0);
-        gl_clear(GL_COLOR_BUFFER_BIT);
 
         voxel_renderer.draw(&win_info, &camera);
 

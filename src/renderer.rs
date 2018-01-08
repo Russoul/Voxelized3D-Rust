@@ -271,7 +271,7 @@ pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Square3<f
 
     let indices : [u32;24] = [0,1,1,2,2,3,3,0, 4,5,5,6,6,7,7,4, 0,4, 1,5, 2,6, 3,7];
     for i in indices.iter() {dat.index_pool.push(i.clone() + dat.vertex_count);}
-    dat.vertex_count += 24;
+    dat.vertex_count += 8;
 }
 
 pub fn add_grid3_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, tangent : Vector3<f32>, normal : Vector3<f32>, extent : f32, subdiv_num : u32, color : Vector3<f32>){
