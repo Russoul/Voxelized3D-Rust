@@ -227,10 +227,12 @@ fn load_shaders_vf() -> HashMap<String, Program>{
 }
 
 
+fn main(){
+    matrix::test_matrices();
+}
 
 
-
-fn main() {
+fn run_voxelized() {
     let def_width: usize = 800;
     let def_height: usize = 600;
 
