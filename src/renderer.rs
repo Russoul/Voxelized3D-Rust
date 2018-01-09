@@ -190,7 +190,7 @@ pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, co
 }
 
 
-pub fn add_triangle_color_normal(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: Vector3<f32>, normal : &Vector3<f32>){
+pub fn add_triangle_color_normal(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: &Vector3<f32>, normal : &Vector3<f32>){
     dat.vertex_pool.push(tr.p1[0]);
     dat.vertex_pool.push(tr.p1[1]);
     dat.vertex_pool.push(tr.p1[2]);

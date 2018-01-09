@@ -9,6 +9,7 @@ use std::fmt::Debug;
 use std;
 use typenum;
 use generic_array;
+use rand::Rng;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Triangle2<T : Scalar + Copy>{
@@ -63,95 +64,35 @@ pub struct Sphere<T : Scalar>{
 }
 
 
-pub struct VoxelGrid2<T : Real + Copy>{
-    pub a : T,
-    pub size_x : usize,
-    pub size_y : usize,
-    pub grid : Vec<T>,
-}
-
-impl<T : Real + SupersetOf<f32>> VoxelGrid2<T>{
-
-    pub fn vertices_x(&self) -> usize {self.size_x + 1}
-    pub fn vertices_y(&self) -> usize {self.size_y + 1}
-
-    pub fn new(a : T, size_x : usize, size_y : usize) -> VoxelGrid2<T>{
-        let grid = vec![convert(0.0);(size_x + 1) * (size_y + 1)];
-
-        VoxelGrid2{a,size_x, size_y, grid}
-    }
-
-    pub fn get(&self, x : usize, y : usize) -> T{
-        self.grid[y * self.vertices_x() + x]
-    }
-
-    pub fn set(&mut self, x : usize, y : usize, value : T){
-        let vx = self.vertices_x();
-        self.grid[y * vx + x] = value;
-    }
-
-    pub fn get_point(&self, x : usize, y : usize) -> Vector2<T>{
-        Vector2::new(self.a * convert::<f32, T>(x as f32), self.a * convert::<f32, T>(y as f32))
-    }
-
-    pub fn square2(&self, x : usize, y : usize) -> Square2<T>{
-        Square2{center : Vector2::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
-    }
-}
-
-pub struct VoxelGrid3<T : Real + Copy>{
-    pub a : T,
-    pub size_x : usize,
-    pub size_y : usize,
-    pub size_z : usize,
-    pub grid : Vec<T>,
-}
-
-impl<T : Real + SupersetOf<f32>> VoxelGrid3<T>{
-
-    pub fn vertices_x(&self) -> usize {self.size_x + 1}
-    pub fn vertices_y(&self) -> usize {self.size_y + 1}
-    pub fn vertices_z(&self) -> usize {self.size_z + 1}
-
-    pub fn new(a : T, size_x : usize, size_y : usize, size_z : usize) -> VoxelGrid3<T>{
-        let grid = vec![convert(0.0);(size_x + 1) * (size_y + 1) * (size_z + 1)];
-
-        VoxelGrid3{a,size_x, size_y, size_z, grid}
-    }
-
-    pub fn get(&self, x : usize, y : usize, z : usize) -> T{
-        self.grid[z * self.vertices_y() * self.vertices_x() + y * self.vertices_x() + x]
-    }
-
-    pub fn set(&mut self, x : usize, y : usize, z : usize, value : T){
-        let vx = self.vertices_x();
-        let vy = self.vertices_y();
-        self.grid[z * vy * vx + y * vx + x] = value;
-    }
 
 
-    pub fn get_point(&self, x : usize, y : usize, z : usize) -> Vector3<T>{
-        Vector3::new(self.a * convert::<f32, T>(x as f32), self.a * convert::<f32, T>(y as f32), self.a * convert::<f32, T>(z as f32))
-    }
 
-    //bounding box of the cube
-    pub fn square3(&self, x : usize, y : usize, z : usize) -> Square3<T>{
-        Square3{center : Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
-    }
-}
 
 pub type DenFn2<T> = Box<Fn(Vector2<T>) -> T>;
 pub type DenFn3<T> = Box<Fn(Vector3<T>) -> T>;
 
-pub fn intersection<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+
+pub fn intersection2<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
     Box::new(move |x|{Real::max(a(x), b(x))})
 }
 
-pub fn union<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+pub fn union2<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
     Box::new(move |x| {Real::min(a(x), b(x))})
 }
 
-pub fn difference<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+pub fn difference2<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+    Box::new(move |x| {Real::max(a(x), -b(x))})
+}
+
+pub fn intersection3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
+    Box::new(move |x|{Real::max(a(x), b(x))})
+}
+
+pub fn union3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
+    Box::new(move |x| {Real::min(a(x), b(x))})
+}
+
+pub fn difference3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
     Box::new(move |x| {Real::max(a(x), -b(x))})
 }
 
@@ -162,40 +103,102 @@ pub fn mk_circle2<T : Real + Copy>(center : Vector2<T>, rad : T) -> DenFn2<T>{
     })
 }
 
-pub fn mk_half_plane_left<T : Real + Copy>(x : T) -> DenFn2<T>{
+pub fn mk_half_plane2_left<T : Real + Copy>(x : T) -> DenFn2<T>{
     Box::new(move |p|{p.x - x})
 }
 
-pub fn mk_half_plane_right<T : Real + Copy>(x : T) -> DenFn2<T>{
+pub fn mk_half_plane2_right<T : Real + Copy>(x : T) -> DenFn2<T>{
     Box::new(move |p|{x - p.x})
 }
 
 
-pub fn mk_half_plane_lower<T : Real + Copy>(y : T) -> DenFn2<T>{
+pub fn mk_half_plane2_lower<T : Real + Copy>(y : T) -> DenFn2<T>{
     Box::new(move |p|{p.y - y})
 }
 
-pub fn mk_half_plane_upper<T : Real + Copy>(y : T) -> DenFn2<T>{
+pub fn mk_half_plane2_upper<T : Real + Copy>(y : T) -> DenFn2<T>{
     Box::new(move |p|{y - p.y})
 }
 
+
+
+pub fn union3_mat<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
+    Box::new(move |x| {Real::min(a(x), b(x))})
+}
+
+pub fn difference3_mat<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
+    Box::new(move |x| {Real::max(a(x), -b(x))})
+}
+
+pub fn mk_half_space_x_neg<T : Real + Copy>(x : T) -> DenFn3<T>{
+    Box::new(move |p|{p.x - x})
+}
+
+pub fn mk_half_space_x_pos<T : Real + Copy>(x : T) -> DenFn3<T>{
+    Box::new(move |p|{x - p.x})
+}
+
+pub fn mk_half_space_y_neg<T : Real + Copy>(y : T) -> DenFn3<T>{
+    Box::new(move |p|{p.y - y})
+}
+
+pub fn mk_half_space_y_pos<T : Real + Copy>(y : T) -> DenFn3<T>{
+    Box::new(move |p|{y - p.y})
+}
+
+pub fn mk_half_space_z_neg<T : Real + Copy>(z : T) -> DenFn3<T>{
+    Box::new(move |p|{p.z - z})
+}
+
+pub fn mk_half_space_z_pos<T : Real + Copy>(z : T) -> DenFn3<T>{
+    Box::new(move |p|{z - p.z})
+}
+
+
 pub fn mk_rectangle2<T : Real + Copy>(center : Vector2<T>, extent : Vector2<T>) -> DenFn2<T> {
-    let right = mk_half_plane_right(center.x - extent.x);
-    let left = mk_half_plane_left(center.x + extent.x);
+    let right = mk_half_plane2_right(center.x - extent.x);
+    let left = mk_half_plane2_left(center.x + extent.x);
 
-    let lower = mk_half_plane_lower(center.y + extent.y);
-    let upper = mk_half_plane_upper(center.y - extent.y);
+    let lower = mk_half_plane2_lower(center.y + extent.y);
+    let upper = mk_half_plane2_upper(center.y - extent.y);
 
-    let i1 = intersection(left, right);
-    let i2 = intersection(upper, lower);
+    let i1 = intersection2(left, right);
+    let i2 = intersection2(upper, lower);
 
-    intersection(i1, i2)
+    intersection2(i1, i2)
+}
+
+pub fn mk_aabb<T : Real + Copy>(center : Vector3<T>, extent : Vector3<T>) -> DenFn3<T> {
+    let x_neg = mk_half_space_x_neg(center.x + extent.x);
+    let x_pos = mk_half_space_x_pos(center.x - extent.x);
+
+    let y_neg = mk_half_space_y_neg(center.y + extent.y);
+    let y_pos = mk_half_space_y_pos(center.y - extent.y);
+
+    let z_neg = mk_half_space_z_neg(center.z + extent.z);
+    let z_pos = mk_half_space_z_pos(center.z - extent.z);
+
+    let ix = intersection3(x_neg, x_pos);
+    let iy = intersection3(y_neg, y_pos);
+    let iz = intersection3(z_neg, z_pos);
+
+    let ixy = intersection3(ix, iy);
+
+    intersection3(ixy, iz)
 }
 
 pub fn mk_sphere<T : Real + Copy>(sphere : Sphere<T>) -> DenFn3<T>{
     Box::new(move |x|{
         let dist = x - sphere.center;
         dist.dot(&dist) - sphere.rad * sphere.rad
+    })
+}
+
+
+pub fn mk_sphere_displacement<'f, T : Real + Copy>(sphere : Sphere<T>, f : Box<Fn(Vector3<T>) -> T>) -> DenFn3<T>{
+    Box::new(move |x|{
+        let dist = x - sphere.center;
+        dist.dot(&dist) - sphere.rad * sphere.rad * f(dist.normalize())
     })
 }
 
@@ -212,6 +215,20 @@ pub fn distance_point3_plane<T : Real>(point3 : &Vector3<T>, plane : &Plane<T>) 
     Real::abs(plane.normal.dot(&vec))
 }
 
+pub fn point3_inside_square3_inclusive<T : Real>(point3 : &Vector3<T>, square3 : Square3<T>) -> bool{
+    point3.x <= square3.center.x + square3.extent &&
+    point3.x >= square3.center.x - square3.extent &&
+
+    point3.y <= square3.center.y + square3.extent &&
+    point3.y >= square3.center.y - square3.extent &&
+
+    point3.z <= square3.center.z + square3.extent &&
+    point3.z >= square3.center.z - square3.extent
+}
+
+pub fn vec3f_vec3d(a : Vector3<f64>) -> Vector3<f32>{
+    Vector3::new(a.x as f32, a.y as f32, a.z as f32)
+}
 
 //column-major
 pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> [f32;16]{

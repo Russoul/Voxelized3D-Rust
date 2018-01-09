@@ -1,3 +1,6 @@
+#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
+
+
 extern crate generic_array;
 extern crate nalgebra as na;
 extern crate typenum;
@@ -5,8 +8,9 @@ extern crate alga;
 extern crate libc;
 extern crate ansi_term;
 extern crate time;
-
-
+extern crate num;
+extern crate rand;
+extern crate noise;
 
 use na::{Vector2,Vector3,Point2,Point3,Vector4, Rotation3};
 use na::core::Unit;
@@ -18,7 +22,10 @@ mod renderer;
 mod math;
 mod voxel_renderer;
 mod dc;
+mod dcm;
+mod matrix;
 
+use noise::{NoiseModule, Perlin};
 use graphics::*;
 use std::ptr;
 use std::fs;
@@ -31,6 +38,7 @@ use renderer::*;
 use math::*;
 use voxel_renderer::*;
 use std::ops::*;
+use rand::distributions::{Sample, Range};
 
 use time::precise_time_ns;
 
@@ -295,23 +303,39 @@ fn main() {
     let BLOCK_SIZE : f32 = 0.125;
     let CHUNK_SIZE : usize = 128;
 
-    let mut grid = VoxelGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+    let mut grid = dcm::VoxelMaterialGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
 
 
 
 
-    let offset = Vector3::new(0.0, 0.0, 0.0);
+   
 
-    let sphere1_ = Sphere{center : Vector3::new(4.0 as f32,4.0, 4.0) + offset, rad : 2.0};
-    let sphere1 = mk_sphere(sphere1_.clone());
+    let sphere1_ = Sphere{center : Vector3::new(4.0 as f32,4.0, 4.0), rad : 2.0};
+    let sphere2_ = Sphere{center : Vector3::new(3.0 ,3.0, 3.0), rad : 1.0};
+    let sphere1 = dcm::mk_sphere_mat(sphere1_.clone(), 1);
+    let sphere11 = dcm::mk_sphere_mat(sphere1_.clone(), 1);
+    let sphere2 = dcm::mk_sphere_mat(sphere2_.clone(), 2);
+    //let aabb = mk_aabb(Vector3::new(4.0, 5.0, 4.0), Vector3::new(1.0, 1.0, 1.0));
 
+    /* let perlin = Perlin::new();
+    let val = perlin.get([42.4, 37.7, 2.8]);
+    
+    let sphere_disp = mk_sphere_displacement(sphere1_.clone(), box move |x| {
+         perlin.get([x.x/2.0, x.y/2.0,x.z/2.0]) + 1.0
+         
+    }); */
 
-    dc::test_sample_normal();
+    let den1 = dcm::union3_mat(sphere11, sphere2);
+    let den = dcm::intersection3_mat_a(den1, sphere1);
+    //let den = union3(den1, aabb);
+
+    //dc::test_sample_normal();
 
     let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
-        dc::fill_in_grid(&mut grid, &sphere1, Vector3::new(0.0, 0.0, 0.0));
-        dc::make_contour(&grid, &sphere1, 32, &mut renderer_lines, &sphere1_)
+        dcm::fill_in_grid(&mut grid, &den, Vector3::new(0.0, 0.0, 0.0));
+        dcm::make_contour(&grid, &den, 16, &mut renderer_lines) //accurary depends on grid resolution
     });
+
 
     shaders.get("lighting").unwrap().enable();
     shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,zero);
@@ -320,7 +344,7 @@ fn main() {
     println!("generated {} triangles", contour_data.triangles.len());
 
     for i in 0..contour_data.triangles.len(){
-        add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], Vector3::new(1.0,1.0,0.0), &contour_data.triangle_normals[i / 2]);
+        add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
     }
     //===================================
 
@@ -399,6 +423,44 @@ fn main() {
 
     glfw_terminate();
 }
+
+
+/* pub struct VoxelGrid2<T : Real + Copy>{
+    pub a : T,
+    pub size_x : usize,
+    pub size_y : usize,
+    pub grid : Vec<T>,
+}
+
+impl<T : Real + SupersetOf<f32>> VoxelGrid2<T>{
+
+    pub fn vertices_x(&self) -> usize {self.size_x + 1}
+    pub fn vertices_y(&self) -> usize {self.size_y + 1}
+
+    pub fn new(a : T, size_x : usize, size_y : usize) -> VoxelGrid2<T>{
+        let grid = vec![convert(0.0);(size_x + 1) * (size_y + 1)];
+
+        VoxelGrid2{a,size_x, size_y, grid}
+    }
+
+    pub fn get(&self, x : usize, y : usize) -> T{
+        self.grid[y * self.vertices_x() + x]
+    }
+
+    pub fn set(&mut self, x : usize, y : usize, value : T){
+        let vx = self.vertices_x();
+        self.grid[y * vx + x] = value;
+    }
+
+    pub fn get_point(&self, x : usize, y : usize) -> Vector2<T>{
+        Vector2::new(self.a * convert::<f32, T>(x as f32), self.a * convert::<f32, T>(y as f32))
+    }
+
+    pub fn square2(&self, x : usize, y : usize) -> Square2<T>{
+        Square2{center : Vector2::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    }
+} */
+
 
 /*fn calc_qef(point : &Vector2<f32>, lines : &Vec<Line2<f32>>) -> f32{
     let mut qef : f32 = 0.0;

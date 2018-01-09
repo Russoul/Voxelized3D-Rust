@@ -2,6 +2,49 @@ use std;
 use na::*;
 use math::*;
 use renderer::*;
+use alga::general::SupersetOf;
+
+pub struct VoxelGrid3<T : Real + Copy>{
+    pub a : T,
+    pub size_x : usize,
+    pub size_y : usize,
+    pub size_z : usize,
+    pub grid : Vec<T>,
+}
+
+
+impl<T : Real + SupersetOf<f32>> VoxelGrid3<T>{
+
+    pub fn vertices_x(&self) -> usize {self.size_x + 1}
+    pub fn vertices_y(&self) -> usize {self.size_y + 1}
+    pub fn vertices_z(&self) -> usize {self.size_z + 1}
+
+    pub fn new(a : T, size_x : usize, size_y : usize, size_z : usize) -> VoxelGrid3<T>{
+        let grid = vec![convert(0.0);(size_x + 1) * (size_y + 1) * (size_z + 1)];
+
+        VoxelGrid3{a,size_x, size_y, size_z, grid}
+    }
+
+    pub fn get(&self, x : usize, y : usize, z : usize) -> T{
+        self.grid[z * self.vertices_y() * self.vertices_x() + y * self.vertices_x() + x]
+    }
+
+    pub fn set(&mut self, x : usize, y : usize, z : usize, value : T){
+        let vx = self.vertices_x();
+        let vy = self.vertices_y();
+        self.grid[z * vy * vx + y * vx + x] = value;
+    }
+
+
+    pub fn get_point(&self, x : usize, y : usize, z : usize) -> Vector3<T>{
+        Vector3::new(self.a * convert::<f32, T>(x as f32), self.a * convert::<f32, T>(y as f32), self.a * convert::<f32, T>(z as f32))
+    }
+
+    //bounding box of the cube
+    pub fn square3(&self, x : usize, y : usize, z : usize) -> Square3<T>{
+        Square3{center : Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    }
+}
 
 fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
     let mut qef : f32 = 0.0;
@@ -49,24 +92,34 @@ fn sample_qef_brute(square : Square3<f32>, n : usize, planes : &Vec<Plane<f32>>)
 //so the algorithm should use some interpolation methods assuming the surface is smooth(does not change too much within one cube of the grid)
 //interpolation can operate on 8 corner vertices of the cube
 //TODO or maybe save generator to disk ??, in case of random(presudo-random) generator - its seed can be saved
-fn sample_intersection_brute(line : Line3<f32>, n : usize, f : &DenFn3<f32>) -> Vector3<f32>{
+fn sample_intersection_brute(line : Line3<f32>, n_ : usize, f : &DenFn3<f32>) -> Vector3<f32>{
     let ext = line.end - line.start;
+    let norm = ext.norm();
+    let dir = ext / norm;
 
-    let mut best_abs = std::f32::MAX;
-    let mut best_point : Option<Vector3<f32>> = None;
+    //let mut best_abs = std::f32::MAX;
+    //let mut best_point : Option<Vector3<f32>> = None;
+
+    let mut center = line.start + ext * 0.5;
+    let mut cur_ext = norm * 0.25;
+    
+    let n = (n_ as f32).log2() as usize + 1;
 
     for i in 0..n {
-        let point = line.start + ext * ((i as f32 + 0.5) / n as f32);
-        let den = f(point);
-        let abs = den.abs();
+        let point1 = center - dir * cur_ext;
+        let point2 = center + dir * cur_ext;
+        let den1 = f(point1).abs();
+        let den2 = f(point2).abs();
 
-        if abs < best_abs {
-            best_abs = abs;
-            best_point = Some(point);
+        if den1 <= den2 {
+            center = point1;
+        }else{
+            center = point2;
         }
+        cur_ext *= 0.5;
     }
 
-    best_point.unwrap()
+    center
 }
 
 
@@ -128,7 +181,7 @@ pub fn test_sample_normal(){
 //feature is a vertex that may or may not be calculated for each cube of the grid. It is calculated for each cube that exhibits a sign change(this means that the cube
 // intersects the surface) and not calculated otherwise
 fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
-               f : &DenFn3<f32>, accuracy : usize, contour_data : &mut ContourData) -> Option<Vector3<f32>>{
+               f : &DenFn3<f32>, accuracy : usize, contour_data : &mut ContourData, debug_render : &mut RendererVertFragDef) -> Option<Vector3<f32>>{
     //let epsilon = vg.a / accuracy as f32;
 
     let p00 = vg.get(x, y, z);
@@ -171,17 +224,26 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
     let rad_for_normal = vg.a / 100.0; //TODO will not work if vg.a is too small (f32 precision)
 
     if edge_info > 0{
-        let mut planes = Vec::<Plane<f32>>::new();
+
+        //let mut normals = Vec::<f32>::new();
+        //let mut intersections = Vec::<f32>::new();
+        let mut planes = Vec::new();
+
 
         {
             let mut worker = |edge_id : usize, v_a : Vector3<f32>, v_b : Vector3<f32>, p_a : f32, p_b : f32|{//goes through each edge of the cube
                 if (edge_info & edge_id) > 0{
                     let ip = sample_intersection_brute(Line3{start : v_a, end : v_b}, accuracy, f);//intersecion point
-                    let full = if p_a <= 0.0 {v_a} else {v_b};
+                    //let full = if p_a <= 0.0 {v_a} else {v_b};
                     //let normal = sample_normal(&Sphere{center : ip, rad : rad_for_normal}, accuracy, f);
                     let normal = sample_normal(&ip, rad_for_normal, f);
+                    //intersections.push(ip.x);
+                    //intersections.push(ip.y);
+                    //intersections.push(ip.z);
+                    //normals.push(normal.x);
+                    //normals.push(normal.y);
+                    //normals.push(normal.z);
                     planes.push(Plane{point : ip, normal});
-
                     //calculate feature vertices of 3 other cubes containing this edge then create a quad from maximum of 4 those feature vertices.
                     //this is done in make_contour
                 }
@@ -203,7 +265,21 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
             worker(2048, v03, v13, p03, p13);
         }
 
-        let feature_vertex = sample_qef_brute(vg.square3(x,y,z), accuracy, &planes);
+       /*  let mut product = Vec::with_capacity(normals.len());
+        for i in 0..normals.len()/3{
+            product.push(normals[3 * i] * intersections[3 * i] + normals[3 * i + 1] * intersections[3 * i + 1] + normals[3 * i + 2] * intersections[3 * i + 2]);
+        }
+
+        //let feature_vertex = Vector3::new(0.0,0.0,0.0);//sample_qef_brute(vg.square3(x,y,z), accuracy, &normals.zip);//TODO
+        let A = DMatrix::from_row_slice(normals.len() / 3, 3, normals.as_slice());
+        let ATA = (&A).transpose() * &A;
+        let b = DMatrix::from_row_slice(product.len(), 1, product.as_slice());
+        let ATb = (&A).transpose() * &b; */
+
+        //println!("{:?} {}", normals.as_slice(), A);
+
+        let feature_vertex = sample_qef_brute(vg.square3(x, y, z), accuracy, &planes);
+                
 
         let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
 
@@ -213,13 +289,14 @@ fn calc_feature(vg : &VoxelGrid3<f32>, x : usize, y : usize, z : usize,
 
 
         Some(feature_vertex)
+        
     }else{
         None
     }
 }
 
 //TODO debug_renderer is for debug only
-pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, debug_renderer : &mut RendererVertFragDef, debug_sphere : &Sphere<f32>) -> ContourData{
+pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, debug_renderer : &mut RendererVertFragDef) -> ContourData{
 
     //TODO inefficient Vec::new() creation vvv
     let mut contour_data = ContourData{lines : Vec::new(), triangles : Vec::new(), triangle_normals : Vec::new(), features : vec![None;vg.size_x * vg.size_y * vg.size_z], normals : vec![None;vg.size_x * vg.size_y * vg.size_z]};
@@ -234,7 +311,7 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, d
                 contour_data.features[t]
             }else{
                 cache_already_calculated[t] = true;
-                calc_feature(&vg, x, y, z, f, accuracy, contour_data)
+                calc_feature(&vg, x, y, z, f, accuracy, contour_data, debug_renderer)
             }
 
 
@@ -271,7 +348,6 @@ pub fn make_contour(vg : &VoxelGrid3<f32>, f : &DenFn3<f32>, accuracy : usize, d
                         Some(f0) => {
                             let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
                             let normal = contour_data.normals[t].unwrap();
-                            let debug_real_normal = f0 - debug_sphere.center;
 
 
                             
