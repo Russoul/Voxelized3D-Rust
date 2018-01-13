@@ -228,7 +228,8 @@ fn load_shaders_vf() -> HashMap<String, Program>{
 
 
 fn main(){
-    matrix::test_matrices();
+    //matrix::test_matrices();
+    run_voxelized();
 }
 
 
