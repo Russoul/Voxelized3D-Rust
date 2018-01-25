@@ -1,17 +1,14 @@
 # Voxelized2D-Rust
 
 # Dependencies
-* rustc
-* cargo(rust)
-* libgc
+* rust
 * glfw3
 * OpenGL >= 3.3.0
 
-# installation on Ubuntu 16.04 - 17.10
+# how to build on Ubuntu 16.04 - 17.10 (including installation of dependencies)
 ```
 $ sudo apt-get update
 $ sudo apt-get install curl
-$ sudo apt-get install libgc-dev
 $ sudo apt-get install libglfw3-dev
 $ sudo apt-get install git
 $ curl -s https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly
