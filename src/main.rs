@@ -12,10 +12,10 @@ extern crate num;
 extern crate rand;
 extern crate noise;
 
-use na::{Vector2,Vector3,Point2,Point3,Vector4, Rotation3};
+use na::*;
 use na::core::Unit;
 
-
+mod adaptive_dc;
 mod graphics;
 mod graphics_util;
 mod renderer;
@@ -39,6 +39,10 @@ use math::*;
 use voxel_renderer::*;
 use std::ops::*;
 use rand::distributions::{Sample, Range};
+use typenum::*;
+use core::storage::*;
+use generic_array::*;
+use adaptive_dc::*;
 
 use time::precise_time_ns;
 
@@ -233,6 +237,8 @@ fn main(){
 }
 
 
+
+
 fn run_voxelized() {
     let def_width: usize = 800;
     let def_height: usize = 600;
@@ -313,7 +319,7 @@ fn run_voxelized() {
 
    
 
-    let sphere1_ = Sphere{center : Vector3::new(4.0 as f32,4.0, 4.0), rad : 2.0};
+    let sphere1_ = Sphere{center : Vector3::new(4.1 as f32,4.2, 4.3), rad : 2.2};
     let sphere2_ = Sphere{center : Vector3::new(3.0 ,3.0, 3.0), rad : 1.0};
     let sphere1 = dcm::mk_sphere_mat(sphere1_.clone(), 1);
     let sphere11 = dcm::mk_sphere_mat(sphere1_.clone(), 1);
@@ -334,6 +340,15 @@ fn run_voxelized() {
 
     //dc::test_sample_normal();
 
+
+    //ADAPTIVE---------
+    let sp_num = mk_sphere(Sphere{center : Vector3::new(-4.0, -4.0, -4.0), rad : 1.0});
+    let tree = timed(&|dt| format!("make tree took {} ms", dt / 1000000), &mut ||{
+       make_tree(&sp_num, Vector3::new(-5.0, -5.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, &mut renderer_lines)
+    });
+
+    //-----------------
+
     let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
         dcm::fill_in_grid(&mut grid, &den, Vector3::new(0.0, 0.0, 0.0));
         dcm::make_contour(&grid, &den, 16, &mut renderer_lines) //accurary depends on grid resolution
@@ -347,7 +362,7 @@ fn run_voxelized() {
     println!("generated {} triangles", contour_data.triangles.len());
 
     for i in 0..contour_data.triangles.len(){
-        add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
+        //add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
     }
     //===================================
 

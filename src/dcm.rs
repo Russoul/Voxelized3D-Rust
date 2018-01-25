@@ -3,6 +3,7 @@ use na::*;
 use math::*;
 use renderer::*;
 use alga::general::SupersetOf;
+use std::iter::FlatMap;
 
 #[derive(Clone, Copy, Debug)]
 pub struct MaterialPoint<T : Real + Copy>{
@@ -154,9 +155,9 @@ fn sample_intersection_brute(line : Line3<f32>, n : usize, f : &DenMatFn3<f32>) 
 
     for i in 0..n {
         let point = line.start + ext * ( i as f32 + 0.5) / n as f32;
-        let den = f(point).density;
+        let den = f(point).density.abs();
 
-        if den >= 0.0 && den < best{
+        if den < best{
            best = den;
            best_point = Some(point);
         }
@@ -238,6 +239,7 @@ fn calc_feature(vg : &VoxelMaterialGrid3<f32>, x : usize, y : usize, z : usize,
         //let mut normals = Vec::<f32>::new();
         //let mut intersections = Vec::<f32>::new();
         let mut planes = Vec::new();
+        
 
 
         {
@@ -254,6 +256,8 @@ fn calc_feature(vg : &VoxelMaterialGrid3<f32>, x : usize, y : usize, z : usize,
                     //normals.push(normal.y);
                     //normals.push(normal.z);
                     planes.push(Plane{point : ip, normal});
+
+                    
                     //calculate feature vertices of 3 other cubes containing this edge then create a quad from maximum of 4 those feature vertices.
                     //this is done in make_contour
                 }
@@ -275,21 +279,67 @@ fn calc_feature(vg : &VoxelMaterialGrid3<f32>, x : usize, y : usize, z : usize,
             worker(2048, v03, v13);
         }
 
-       /*  let mut product = Vec::with_capacity(normals.len());
-        for i in 0..normals.len()/3{
-            product.push(normals[3 * i] * intersections[3 * i] + normals[3 * i + 1] * intersections[3 * i + 1] + normals[3 * i + 2] * intersections[3 * i + 2]);
+        let normals : Vec<f32> = planes.iter().flat_map(|x| x.normal.as_slice().to_owned()).collect();
+        let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
+        //let intersections : Vec<f32> = planes.iter().flat_map(|x| x.point.as_slice().to_owned()).collect();
+        let product : Vec<f32> = planes.iter().map(|x| x.normal.dot(&x.point)).collect();
+        for i in 0..product.len(){
+            Abs.push(normals[3 * i]);
+            Abs.push(normals[3 * i + 1]);
+            Abs.push(normals[3 * i + 2]);
+            Abs.push(product[i]);
         }
+
+        // let mut product = Vec::with_capacity(normals.len());
+        // for i in 0..normals.len()/3{
+        //     product.push(normals[3 * i] * intersections[3 * i] + normals[3 * i + 1] * intersections[3 * i + 1] + normals[3 * i + 2] * intersections[3 * i + 2]);
+        // }
 
         //let feature_vertex = Vector3::new(0.0,0.0,0.0);//sample_qef_brute(vg.square3(x,y,z), accuracy, &normals.zip);//TODO
         let A = DMatrix::from_row_slice(normals.len() / 3, 3, normals.as_slice());
         let ATA = (&A).transpose() * &A;
         let b = DMatrix::from_row_slice(product.len(), 1, product.as_slice());
-        let ATb = (&A).transpose() * &b; */
+        let ATb = (&A).transpose() * &b; 
+        let Ab = DMatrix::from_row_slice(planes.len(), 4, Abs.as_slice());
+
+        let bTb = (&b).transpose() * (&b);
+        let mag = bTb.norm();
+
+        
+
+        // let qr1 = Ab.qr();
+        // let R = qr1.r(); //transpose ?
+
+        // let mut A1 = R.slice((0,0), (3,3));
+        // let mut b1 = R.slice((0,3), (3,1));
+        // let mut r = unsafe{R.get_unchecked(3,3)};
+        // let svd = A1.svd(true,true);
+        // let sol = svd.solve(&b1,0.00001);
+
+        let qr = ATA.qr();
+        let solved = qr.solve(&ATb);
 
         //println!("{:?} {}", normals.as_slice(), A);
 
-        let feature_vertex = sample_qef_brute(vg.square3(x, y, z), accuracy, &planes);
-                
+        let mut feature_vertex = match solved{
+            Some(sol) => Vector3::new(sol[0], sol[1], sol[2]),
+            None => sample_qef_brute(vg.square3(x, y, z), accuracy, &planes),
+        };
+        if !point3_inside_square3_inclusive(&feature_vertex, vg.square3(x, y, z)){
+            // println!("bad val {} {} {}", x,y,z);
+            // add_square3_bounds_color(debug_render, vg.square3(x, y, z), Vector3::new(1.0,1.0,1.0)); //cube
+            // add_square3_bounds_color(debug_render, Square3{center : feature_vertex, extent : 0.006}, Vector3::new(0.0,1.0,1.0)); //feature
+            // add_line3_color(debug_render, Line3{start : vg.square3(x, y, z).center, end : feature_vertex}, Vector3::new(0.0,0.0,0.0)); //to feature
+
+            // for plane in &planes{
+            //     add_square3_bounds_color(debug_render, Square3{center : plane.point, extent : 0.004}, Vector3::new(0.0,1.0,0.0));
+            //     add_line3_color(debug_render, Line3{start : plane.point, end : plane.point + plane.normal * 0.05}, Vector3::new(1.0,1.0,0.0));
+            // }
+
+
+            feature_vertex = sample_qef_brute(vg.square3(x, y, z), accuracy, &planes);
+        }
+        
 
         let t = z * vg.size_y * vg.size_x + y * vg.size_x + x;
 
