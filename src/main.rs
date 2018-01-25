@@ -24,6 +24,7 @@ mod voxel_renderer;
 mod dc;
 mod dcm;
 mod matrix;
+mod uniform_manifold_dc;
 
 use noise::{NoiseModule, Perlin};
 use graphics::*;
@@ -43,6 +44,7 @@ use typenum::*;
 use core::storage::*;
 use generic_array::*;
 use adaptive_dc::*;
+use uniform_manifold_dc::*;
 
 use time::precise_time_ns;
 
