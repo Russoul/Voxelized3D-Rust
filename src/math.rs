@@ -10,6 +10,7 @@ use std;
 use typenum;
 use generic_array;
 use rand::Rng;
+use noise::{NoiseModule, Perlin};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Triangle2<T : Scalar + Copy>{
@@ -52,9 +53,19 @@ pub struct Square2<T : Scalar>{
 
 //axis aligned
 #[derive(Clone, Copy, Debug)]
-pub struct Square3<T : Scalar>{
+pub struct Square3<T : Real>{
     pub center : Vector3<T>,
     pub extent : T,
+}
+
+impl<T : Real> Square3<T>{
+    pub fn min(&self) -> Vector3<T>{
+        self.center - Vector3::new(self.extent,self.extent,self.extent)
+    }
+
+    pub fn max(&self) -> Vector3<T>{
+        self.center + Vector3::new(self.extent,self.extent,self.extent)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -95,6 +106,40 @@ pub fn union3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
 pub fn difference3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
     Box::new(move |x| {Real::max(a(x), -b(x))})
 }
+
+//0 to 1.0
+pub fn octave_perlin2(perlin : &Perlin, x : f32, z : f32, octaves : usize, persistence : f32) -> f32{
+    let mut total = 0.0;
+    let mut frequency = 1.0;
+    let mut amplitude = 1.0;
+    let mut max_value = 0.0;
+
+    let k = 2.0.powi((octaves - 1) as i32);
+
+    for i in 0..octaves{
+        total += (perlin.get([x * frequency / k, z * frequency / k]) + 1.0)/2.0 * amplitude;
+        max_value += amplitude;
+        amplitude *= persistence;
+        frequency *= 2.0;
+    }
+
+    total / max_value
+}
+
+pub fn noise_f32(perlin : Perlin, cube : Square3<f32>) -> DenFn3<f32>{
+    box move |x| {
+        if point3_inside_square3_inclusive(&x, &cube){
+            let den = -octave_perlin2(&perlin, x.x - (cube.center.x - cube.extent), x.z - (cube.center.z - cube.extent), 4, 0.56) * 2.0 * cube.extent;
+            let dy = (x.y - (cube.center.y - cube.extent) ); //cube.extent / 2.0 ; // 0 - 1
+            //println!("{} {} {}", den, dy, x.y);
+            den + dy
+        }else{
+            0.01
+        }
+        
+    }
+}
+
 
 pub fn mk_circle2<T : Real + Copy>(center : Vector2<T>, rad : T) -> DenFn2<T>{
     Box::new(move |x|{
@@ -231,7 +276,7 @@ pub fn distance_point3_plane<T : Real>(point3 : &Vector3<T>, plane : &Plane<T>) 
     Real::abs(plane.normal.dot(&vec))
 }
 
-pub fn point3_inside_square3_inclusive<T : Real>(point3 : &Vector3<T>, square3 : Square3<T>) -> bool{
+pub fn point3_inside_square3_inclusive<T : Real>(point3 : &Vector3<T>, square3 : &Square3<T>) -> bool{
     point3.x <= square3.center.x + square3.extent &&
     point3.x >= square3.center.x - square3.extent &&
 

@@ -484,7 +484,7 @@ fn sample_qef_brute(square : &Square3<f32>, n : usize, planes : &Vec<Plane<f32>>
 
 //constructs grid: calculates hermite data and configuration for each cell
 //TODO generating triangles write in this function would benefit performance (no extra looping through cells)
-pub fn construct_grid(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
+pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
     let corners = corner_points();
     let edge_pairs = edge_pairs();
     let edge_table = edge_table();
@@ -511,9 +511,9 @@ pub fn construct_grid(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : u
 
         let mut cached_cell = HashMap::new();
 
-        if vertices.len() > 1 {
-            add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(1.0,0.0,0.0));
-        }
+        // if vertices.len() > 1 {
+        //     add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(1.0,0.0,0.0));
+        // }
 
         for vertex in vertices{
 
@@ -536,7 +536,11 @@ pub fn construct_grid(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : u
                 cur_planes.push(plane); //for current vertex QEF processing
             }
 
+
+
+           
             let minimizer = sample_qef_brute(&bounds, accuracy, &cur_planes);
+
 
             for edge_id in &vertex { 
                 cached_cell.insert(edge_id.clone(), minimizer);//duplicates are not possible
@@ -577,14 +581,14 @@ pub fn construct_grid(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : u
     };
 
     let mut grid = HermiteGrid::new(a, size);
-    for y in 0..size{
-        for z in 0..size{
-            for x in 0..size{
+    for y in 0..size-1{
+        for z in 0..size-1{
+            for x in 0..size-1{
 
                 let cell = load_cell_cached(&mut grid, x,y,z, &mut cache);
                 for (edge_id, minimizer) in &cell{
                     let t = minimizer.clone();
-                    match edge_id.clone(){
+                    match edge_id.clone(){ //TODO add triangle vertex only once, use indexing + culling (decide direction by normal)
                         5 => {
                             let r = load_cell_cached(&mut grid, x+1,y,z, &mut cache).get(&7).unwrap().clone();
                             let ru = load_cell_cached(&mut grid, x+1,y+1,z, &mut cache).get(&3).unwrap().clone();

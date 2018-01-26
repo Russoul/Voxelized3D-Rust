@@ -1,3 +1,3 @@
--PROBABLY NO some kind of raytracing algorithm to render terrain ? then we won't need dual contouring ! (see Raymarching http://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/)
+--- PROBABLY NO some kind of raytracing algorithm to render terrain ? then we won't need dual contouring ! (see Raymarching http://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/)
 
--uniform manifold dual contouring (another name for dual marching cubes ?) + think about implementing adaptive variant
+--- UMDC + AMDC

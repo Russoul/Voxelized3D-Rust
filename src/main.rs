@@ -311,8 +311,8 @@ fn run_voxelized() {
 
 
     //====================================
-    let BLOCK_SIZE : f32 = 0.125 / 2.0;
-    let CHUNK_SIZE : usize = 128 * 2;
+    let BLOCK_SIZE : f32 = 0.125;
+    let CHUNK_SIZE : usize = 128;
 
     let mut grid = dcm::VoxelMaterialGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
 
@@ -357,9 +357,14 @@ fn run_voxelized() {
     let rec1 = mk_aabb(Vector3::new(2.0,2.0,0.0), Vector3::new(0.2,0.2,0.2));
     let den1 = union3(sp_num1, sp_num2);
     let den = union3(rec1, den1);
-    let torusz = mk_torus_z(1.0, 0.4,Vector3::new(0.0,0.0,-4.0));
-    let torusy = mk_torus_y(0.8, 0.3,Vector3::new(1.0,0.0,-4.0));
-    construct_grid(&(union3(torusz, torusy)), Vector3::new(-3.0, -3.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, 16, &mut renderer_tr_light, &mut renderer_lines);
+    let torusz = mk_torus_z(2.0, 0.8,Vector3::new(0.0,0.0,-4.0));
+    let torusy = mk_torus_y(1.6, 0.6,Vector3::new(2.0,0.0,-4.0));
+    let perlin = Perlin::new();
+    let noise = noise_f32(perlin, Square3{center : Vector3::new(1.0,-1.0,1.0), extent : 3.5} );//perlin.get([p.x,p.y,p.z])  ;
+    let two_torus = union3(torusz, torusy);
+    //let den = f;
+    //TODO implement DenFn differently, like noise library
+    construct_grid(&noise, Vector3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 4, &mut renderer_tr_light, &mut renderer_lines);
     ///------------------
 
     // let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
@@ -369,7 +374,7 @@ fn run_voxelized() {
 
 
     shaders.get("lighting").unwrap().enable();
-    shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,zero);
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,Vector3::new(0.0, 4.0,0.0));
     shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green) * 5.0);
 
     // println!("generated {} triangles", contour_data.triangles.len());
