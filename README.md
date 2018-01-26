@@ -1,6 +1,8 @@
 # Voxelized2D-Rust
 
-![UMDC](uniform_manifold_dual_contouring.png)
+![UMDC + signed field geometry](uniform_manifold_dual_contouring.png)
+
+![UMDC + perlin noise](umdc_perlin_noise.png)
 
 # Dependencies
 * rust
