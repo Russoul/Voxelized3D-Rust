@@ -1,5 +1,7 @@
 # Voxelized2D-Rust
 
+![UMDC](uniform_manifold_dual_contouring.png)
+
 # Dependencies
 * rust
 * glfw3
