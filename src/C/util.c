@@ -15,7 +15,8 @@
 
 
 //returns all found filenames
-filenames find_all_files_in_dir(char *path) //garbage collected
+//filenames.names must be freed (both pointer levels)
+filenames find_all_files_in_dir(char *path) 
 {
   DIR           *d;
   struct dirent *dir;
@@ -31,7 +32,7 @@ filenames find_all_files_in_dir(char *path) //garbage collected
       }
     }
 
-    char **names = GC_malloc(sizeof (char*) * file_count);
+    char **names = malloc(sizeof (char*) * file_count);
 
     closedir(d);
     d = opendir(path); //reopen directory
@@ -41,11 +42,11 @@ filenames find_all_files_in_dir(char *path) //garbage collected
     {
       if(dir->d_type == DT_REG) {
 	
-	int size = strlen(dir->d_name);   //
-	char* copy = GC_malloc(size);     //
-	memcpy(copy, dir->d_name, size);  // C requares nasty things
+        int size = strlen(dir->d_name);   //
+        char* copy = malloc(size);     //
+        memcpy(copy, dir->d_name, size);  // C requares nasty things
 
-	names[i++] = copy;
+        names[i++] = copy;
 	
 
       }
@@ -82,7 +83,7 @@ char* readFile(char* filename){
 
   return string;
   
-}
+} 
 
 
  void _gladLoadGLLoader(){

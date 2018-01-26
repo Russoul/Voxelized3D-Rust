@@ -194,6 +194,22 @@ pub fn mk_sphere<T : Real + Copy>(sphere : Sphere<T>) -> DenFn3<T>{
     })
 }
 
+pub fn mk_torus_z<T : Real>(R : T, r : T, offset : Vector3<T>) -> DenFn3<T>{
+    Box::new(move |p|{
+        let x = p - offset;
+        let a = (x.x * x.x + x.y * x.y).sqrt() - R;
+        a * a + x.z * x.z - r * r
+    })
+}
+
+pub fn mk_torus_y<T : Real>(R : T, r : T, offset : Vector3<T>) -> DenFn3<T>{
+    Box::new(move |p|{
+        let x = p - offset;
+        let a = (x.x * x.x + x.z * x.z).sqrt() - R;
+        a * a + x.y * x.y - r * r
+    })
+}
+
 
 pub fn mk_sphere_displacement<'f, T : Real + Copy>(sphere : Sphere<T>, f : Box<Fn(Vector3<T>) -> T>) -> DenFn3<T>{
     Box::new(move |x|{

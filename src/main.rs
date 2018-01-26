@@ -311,8 +311,8 @@ fn run_voxelized() {
 
 
     //====================================
-    let BLOCK_SIZE : f32 = 0.125;
-    let CHUNK_SIZE : usize = 128;
+    let BLOCK_SIZE : f32 = 0.125 / 2.0;
+    let CHUNK_SIZE : usize = 128 * 2;
 
     let mut grid = dcm::VoxelMaterialGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
 
@@ -344,28 +344,39 @@ fn run_voxelized() {
 
 
     //ADAPTIVE---------
-    let sp_num = mk_sphere(Sphere{center : Vector3::new(-4.0, -4.0, -4.0), rad : 1.0});
-    let tree = timed(&|dt| format!("make tree took {} ms", dt / 1000000), &mut ||{
-       make_tree(&sp_num, Vector3::new(-5.0, -5.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, &mut renderer_lines)
-    });
+    // let sp_num = mk_sphere(Sphere{center : Vector3::new(-4.0, -4.0, -4.0), rad : 1.0});
+    // let tree = timed(&|dt| format!("make tree took {} ms", dt / 1000000), &mut ||{
+    //    make_tree(&sp_num, Vector3::new(-5.0, -5.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, &mut renderer_lines)
+    // });
 
     //-----------------
 
-    let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
-        dcm::fill_in_grid(&mut grid, &den, Vector3::new(0.0, 0.0, 0.0));
-        dcm::make_contour(&grid, &den, 16, &mut renderer_lines) //accurary depends on grid resolution
-    });
+    //UNIFORM MANIFOLD DC
+    let sp_num1 = mk_sphere(Sphere{center : Vector3::new(2.0, 2.0, -1.0), rad : 1.0});
+    let sp_num2 = mk_sphere(Sphere{center : Vector3::new(2.0, 2.0, 1.001), rad : 1.0});
+    let rec1 = mk_aabb(Vector3::new(2.0,2.0,0.0), Vector3::new(0.2,0.2,0.2));
+    let den1 = union3(sp_num1, sp_num2);
+    let den = union3(rec1, den1);
+    let torusz = mk_torus_z(1.0, 0.4,Vector3::new(0.0,0.0,-4.0));
+    let torusy = mk_torus_y(0.8, 0.3,Vector3::new(1.0,0.0,-4.0));
+    construct_grid(&(union3(torusz, torusy)), Vector3::new(-3.0, -3.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, 16, &mut renderer_tr_light, &mut renderer_lines);
+    ///------------------
+
+    // let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
+    //     dcm::fill_in_grid(&mut grid, &den, Vector3::new(0.0, 0.0, 0.0));
+    //     dcm::make_contour(&grid, &den, 16, &mut renderer_lines) //accurary depends on grid resolution
+    // });
 
 
     shaders.get("lighting").unwrap().enable();
     shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,zero);
     shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green) * 5.0);
 
-    println!("generated {} triangles", contour_data.triangles.len());
+    // println!("generated {} triangles", contour_data.triangles.len());
 
-    for i in 0..contour_data.triangles.len(){
-        //add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
-    }
+    // for i in 0..contour_data.triangles.len(){
+    //     //add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
+    // }
     //===================================
 
 

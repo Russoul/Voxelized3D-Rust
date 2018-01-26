@@ -324,15 +324,15 @@ pub fn edge_pairs() -> Vec < Vector2<usize> >{
         Vector2::new(3,2),
         Vector2::new(0,3),
 
-        Vector2::new(4,5),
-        Vector2::new(5,6),
-        Vector2::new(7,6),
-        Vector2::new(4,7),
+        Vector2::new(4,5), 
+        Vector2::new(5,6), //5
+        Vector2::new(7,6), //6
+        Vector2::new(4,7), 
 
         Vector2::new(4,0),
-        Vector2::new(1,5),
-        Vector2::new(2,6),
-        Vector2::new(3,7)
+        Vector2::new(1,5), 
+        Vector2::new(2,6), //10
+        Vector2::new(3,7)  
     ]
 }
 
@@ -377,8 +377,8 @@ impl<T : Real + SupersetOf<f32>> HermiteGrid<T>{
     }
 
     //bounding box of the cell
-    pub fn cube(&self, x : usize, y : usize, z : usize) -> Square3<T>{
-        Square3{center : Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    pub fn cube(&self, x : usize, y : usize, z : usize, offset : Vector3<T>) -> Square3<T>{
+        Square3{center : offset + Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
     }
 }
 
@@ -423,15 +423,21 @@ fn is_const_sign(a : f32, b : f32) -> bool {
     if a > 0.0 { b > 0.0} else {b <= 0.0}
 }
 
-//TODO create a special table that does it
-pub fn which_edges_are_signed(table : &Vec< Vec<isize> >, config : usize) -> Vec<usize>{
+//outer list corresponds to each vertex to be placed inside the cell
+//inner list binds edges according to the EMCT to that vertex 
+pub fn which_edges_are_signed(table : &Vec< Vec<isize> >, config : usize) -> Vec<Vec<usize>>{
     let entry = &table[config];
+    if entry[0] == -2 {return Vec::with_capacity(0)}
     let mut result = Vec::new(); 
+    let mut cur_vertex = Vec::new();
     for i in 0..entry.len(){ //entry.len() is always 16
         let k = entry[i];
-        if k > 0 {result.push(k as usize)}
-        else if k == -2 {return result}
-        //else k == -1 continue
+        if k >= 0 {cur_vertex.push(k as usize)}
+        else if k == -2 {result.push(cur_vertex);return result}
+        else { //k == -1
+            result.push(cur_vertex);
+            cur_vertex = Vec::new();
+        }
     }
 
     result
@@ -439,51 +445,182 @@ pub fn which_edges_are_signed(table : &Vec< Vec<isize> >, config : usize) -> Vec
 }
 
 
+fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
+    let mut qef : f32 = 0.0;
+    for plane in planes{
+        let dist_signed = plane.normal.dot(&(point - plane.point));
+        qef += dist_signed * dist_signed;
+    }
+
+    qef
+}
+
+fn sample_qef_brute(square : &Square3<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
+    let ext = Vector3::new(square.extent, square.extent, square.extent);
+    let min = square.center - ext;
+
+    let mut best_qef = std::f32::MAX;
+    let mut best_point = min;
+
+    for i in 0..n{
+        for j in 0..n{
+            for k in 0..n{
+                let point = min + Vector3::new(ext.x * (2.0 * (i as f32) + 1.0) / (n as f32),
+                                               ext.y * (2.0 * (j as f32) + 1.0) / (n as f32),
+                                               ext.z * (2.0 * (k as f32) + 1.0) / (n as f32));
+                let qef = calc_qef(&point, &planes);
+
+                if qef < best_qef{
+                    best_qef = qef;
+                    best_point = point;
+                }
+            }
+        }
+    }
+
+    best_point
+}
+
+
 //constructs grid: calculates hermite data and configuration for each cell
 //TODO generating triangles write in this function would benefit performance (no extra looping through cells)
-pub fn construct_grid(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize, accuracy : usize) -> HermiteGrid<f32>{
+pub fn construct_grid(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
     let corners = corner_points();
     let edge_pairs = edge_pairs();
     let edge_table = edge_table();
+
+    //bindings between edge and vertex for each cell
+    let mut cache : Vec< Option< HashMap<usize, Vector3<f32>  > > > = vec![None;size * size * size];
+
+    let mut load_cell = |grid : &mut HermiteGrid<f32>, x : usize, y : usize, z : usize, cache : &mut Vec<Option<HashMap<usize,Vector3<f32>>>>|{
+        let cell_min = offset + Vector3::new(x as f32 * a, y as f32 * a, z as f32 * a);
+        let bounds = grid.cube(x,y,z,offset);
+        let mut densities = [0.0;8];
+        let mut config = 0;
+        for i in 0..8{
+            let p = cell_min + corners[i] * a;
+            densities[i] = f(p);
+            if densities[i] < 0.0{
+                config |= 1 << i;
+            }
+        }
+
+        let vertices = which_edges_are_signed(&edge_table, config);
+
+        let mut hermite_data = HashMap::new();
+
+        let mut cached_cell = HashMap::new();
+
+        if vertices.len() > 1 {
+            add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(1.0,0.0,0.0));
+        }
+
+        for vertex in vertices{
+
+            let mut cur_planes = Vec::with_capacity(vertex.len());
+
+            
+
+            for edge_id in &vertex{
+                let pair = edge_pairs[edge_id.clone()];
+                let v1 = corners[pair.x];
+                let v2 = corners[pair.y];
+
+                let edge = Line3{start : cell_min + v1 * a, end : cell_min + v2 * a};
+
+                let intersection = sample_surface_intersection(&edge, accuracy, f);
+                let normal = sample_normal(&intersection, a / 100.0, f);
+
+                let plane = Plane{point : intersection, normal};
+                hermite_data.insert(edge_id.clone(), plane);
+                cur_planes.push(plane); //for current vertex QEF processing
+            }
+
+            let minimizer = sample_qef_brute(&bounds, accuracy, &cur_planes);
+
+            for edge_id in &vertex { 
+                cached_cell.insert(edge_id.clone(), minimizer);//duplicates are not possible
+            }
+
+        }
+
+        let t = z * size * size + y * size + x;
+        cache[t] = Some(cached_cell);
+
+        let cell = Cell{densities, hermite_data, config};
+
+        grid.set(x, y, z, cell);
+
+    };
+
+    let mut load_cell_cached = |grid : &mut HermiteGrid<f32>, x : usize, y : usize, z : usize, cache : &mut Vec<Option<HashMap<usize,Vector3<f32>>>>|{
+        let t = z * size * size + y * size + x;
+
+        let mut load = false;
+        {
+            let cached = cache[t].as_ref();
+            match cached{
+                None => load = true,
+                Some(_) => (),
+            }
+        }
+
+        let cached = {
+            if load{
+                load_cell(grid, x, y, z, cache);
+            };
+            cache[t].as_ref().unwrap()
+        };
+
+        cached.clone() //TODO cloning is bad here
+        
+    };
 
     let mut grid = HermiteGrid::new(a, size);
     for y in 0..size{
         for z in 0..size{
             for x in 0..size{
 
-                let cell_min = offset + Vector3::new(x as f32 * a, y as f32 * a, z as f32 * a);
-                let mut densities = [0.0;8];
-                let mut config = 0;
-                for i in 0..8{
-                    let p = cell_min + corners[i] * a;
-                    densities[i] = f(p);
-                    if densities[i] < 0.0{
-                        config |= 1 << i;
+                let cell = load_cell_cached(&mut grid, x,y,z, &mut cache);
+                for (edge_id, minimizer) in &cell{
+                    let t = minimizer.clone();
+                    match edge_id.clone(){
+                        5 => {
+                            let r = load_cell_cached(&mut grid, x+1,y,z, &mut cache).get(&7).unwrap().clone();
+                            let ru = load_cell_cached(&mut grid, x+1,y+1,z, &mut cache).get(&3).unwrap().clone();
+                            let u = load_cell_cached(&mut grid, x,y+1,z, &mut cache).get(&1).unwrap().clone();
+                            let normal = &grid.get(x,y,z).hermite_data.get(&5).unwrap().normal;
+                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : r, p3 : ru}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : ru, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                        },
+                        6 => {
+                            let f = load_cell_cached(&mut grid, x,y,z+1, &mut cache).get(&4).unwrap().clone();
+                            let fu_ = load_cell_cached(&mut grid, x,y+1,z+1, &mut cache);
+                            // let config = grid.get(x,y+1,z+1).config;
+                            // println!("vertex count {:?}, edges: {:?}, map : {:?}", vertex_num_table()[config], edge_table[config], &fu_);
+                            let fu = fu_.get(&0).unwrap().clone();
+                            let u = load_cell_cached(&mut grid, x,y+1,z, &mut cache).get(&2).unwrap().clone();
+                            let normal = &grid.get(x,y,z).hermite_data.get(&6).unwrap().normal;
+                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : fu}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : fu, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                        },
+                        10 => {
+                            let r_ = load_cell_cached(&mut grid, x+1,y,z, &mut cache);
+                            //let config = grid.get(x+1,y,z).config;
+                            //let config_this = grid.get(x,y,z).config;
+                            //println!("this {:?}, errored {:?}", &edge_table[config_this], &edge_table[config]);
+                            let r = r_.get(&11).unwrap().clone();
+                            let rf = load_cell_cached(&mut grid, x+1,y,z+1, &mut cache).get(&8).unwrap().clone();
+                            let f = load_cell_cached(&mut grid, x,y,z+1, &mut cache).get(&9).unwrap().clone();
+
+                            let normal = &grid.get(x,y,z).hermite_data.get(&10).unwrap().normal;
+
+                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : rf, p3 : r}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : rf}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                        },
+                        _ => ()
                     }
                 }
-
-                let edges_covered = which_edges_are_signed(&edge_table, config);
-
-                let mut hermite_data = HashMap::new();
-
-                for edge_id in edges_covered{
-                    let pair = edge_pairs[edge_id];
-                    let v1 = corners[pair.x];
-                    let v2 = corners[pair.y];
-
-                    let edge = Line3{start : cell_min + v1 * a, end : cell_min + v2 * a};
-
-                    let intersection = sample_surface_intersection(&edge, accuracy, f);
-                    let normal = sample_normal(&intersection, a / 100.0, f);
-
-                    hermite_data.insert(edge_id, Plane{point : intersection, normal});
-
-                }
-
-                let cell = Cell{densities, hermite_data, config};
-
-                grid.set(x, y, z, cell);
-
                 
             }
         }
