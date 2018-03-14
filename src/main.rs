@@ -15,10 +15,12 @@ extern crate noise;
 use na::*;
 use na::core::Unit;
 
+mod qef_bindings;
 mod adaptive_dc;
 mod graphics;
 mod graphics_util;
 mod renderer;
+#[macro_use]
 mod math;
 mod voxel_renderer;
 mod dc;
@@ -232,8 +234,27 @@ fn load_shaders_vf() -> HashMap<String, Program>{
     map
 }
 
+unsafe fn compose2<'a, A,B,C, F, G>(f : *const F, g : *const G) -> Box<Fn(A) -> C + 'a> where
+    F :  Fn(A) -> B + 'a,
+    G :  Fn(B) -> C + 'a{
+    unsafe{
+        box move |a| (*g)( (*f)(a) )
+    }
+}
+
 
 fn main(){
+   
+    let id = |x : usize| x;
+    unsafe{
+       let f1 = compose2(&id, &id);
+       f1(1);
+       id(1);
+
+       let rec = mk_rectangle2(Vector2::new(0.0, 0.0), Vector2::new(1.0, 2.0));
+       println!("{}", rec(Vector2::new(1.0,0.0)));
+    }
+
     //matrix::test_matrices();
     run_voxelized();
 }
@@ -298,6 +319,8 @@ fn run_voxelized() {
     let green = Vector3::new(0.0, 1.0, 0.0);
     let blue = Vector3::new(0.0, 0.0, 1.0);
     let white = Vector3::new(1.0, 1.0, 1.0);
+    
+
 
     add_grid3_color(&mut renderer_lines, zero, Vector3::new(0.0, 0.0, -1.0), Vector3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
@@ -305,14 +328,14 @@ fn run_voxelized() {
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + green}, green);
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + blue}, blue);
 
-    add_square3_bounds_color(&mut renderer_lines, Square3{center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
+    //add_square3_bounds_color(&mut renderer_lines, Square3{center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
 
 
 
 
     //====================================
-    let BLOCK_SIZE : f32 = 0.125;
-    let CHUNK_SIZE : usize = 128;
+    let BLOCK_SIZE : f32 = 0.125;//2.0;
+    let CHUNK_SIZE : usize = 128;//*2;
 
     let mut grid = dcm::VoxelMaterialGrid3::new(BLOCK_SIZE, CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
 
@@ -358,13 +381,21 @@ fn run_voxelized() {
     let den1 = union3(sp_num1, sp_num2);
     let den = union3(rec1, den1);
     let torusz = mk_torus_z(2.0, 0.8,Vector3::new(0.0,0.0,-4.0));
-    let torusy = mk_torus_y(1.6, 0.6,Vector3::new(2.0,0.0,-4.0));
+    let torusy = mk_torus_y(1.6, 0.67,Vector3::new(2.0,0.0,-4.0));
     let perlin = Perlin::new();
     let noise = noise_f32(perlin, Square3{center : Vector3::new(1.0,-1.0,1.0), extent : 3.5} );//perlin.get([p.x,p.y,p.z])  ;
     let two_torus = union3(torusz, torusy);
+    let den2 = difference3(two_torus, mk_aabb(Vector3::new(0.0, 3.0, -4.0), Vector3::new(1.5,1.5,1.5)));
+    let den3 = union3(den2, mk_sphere(Sphere{center : Vector3::new(0.0, 2.0, -4.0), rad : 1.0}));
+    let den4 = union3(den3, mk_obb(Vector3::new(1.0, 1.0, 0.0), Vector3::new(1.0, -1.0, 0.0).normalize(), Vector3::new(1.0, 1.0, 0.5).normalize(), Vector3::new(1.0, 0.5, 0.2)));
+    //let den4 = union3(den3, mk_half_space_pos(Plane{point : Vector3::new(0.0, 2.0, -4.0), normal : Vector3::new(1.0, 1.0, 0.0).normalize()}));
     //let den = f;
     //TODO implement DenFn differently, like noise library
-    construct_grid(&noise, Vector3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 4, &mut renderer_tr_light, &mut renderer_lines);
+    //construct_grid(&den4, Vector3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
+
+    let test_sphere = Sphere{center : Vector3::new(2.7, 1.0, 0.0), rad : 2.4};
+    add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vector3::new(1.0, 1.0, 1.0));
+    construct_grid(&(mk_sphere(test_sphere)), Vector3::new(-0.5, 0.5, -0.5), 1.0/8.0, 2*8, 32, &mut renderer_tr_light, &mut renderer_lines);
     ///------------------
 
     // let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
@@ -374,8 +405,8 @@ fn run_voxelized() {
 
 
     shaders.get("lighting").unwrap().enable();
-    shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,Vector3::new(0.0, 4.0,0.0));
-    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green) * 5.0);
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,Vector3::new(0.0, 8.0,0.0));
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green + blue) * 5.0);
 
     // println!("generated {} triangles", contour_data.triangles.len());
 
@@ -385,7 +416,7 @@ fn run_voxelized() {
     //===================================
 
 
-    fn shader_data(shader: &Program, win: &WindowInfo, camera : &Camera){
+    fn shader_data(shader: &Program, win: &WindowInfo, camera : &Camera) -> bool{
         let aspect = win.width as f32 / win.height as f32;
        /* let height = 16.0;
         let width = height;*/
@@ -405,10 +436,35 @@ fn run_voxelized() {
         shader.set_float4x4("P", false, persp.as_slice());
         shader.set_float4x4("V", false, view.as_slice());
 
+        true
+
+    };
+
+    fn shader_data_lines(shader: &Program, win: &WindowInfo, camera : &Camera) -> bool{
+        let aspect = win.width as f32 / win.height as f32;
+       /* let height = 16.0;
+        let width = height;*/
+        let id_mat = [
+            1.0,0.0,0.0,0.0,
+            0.0,1.0,0.0,0.0,
+            0.0,0.0,1.0,0.0,
+            0.0,0.0,0.0,1.0];
+
+
+
+
+        let persp = perspective(90.0, aspect, 0.1, 16.0);
+        let view = view_dir(camera.pos, camera.look, camera.up);
+
+
+        shader.set_float4x4("P", false, persp.as_slice());
+        shader.set_float4x4("V", false, view.as_slice());
+   
+        glfw_get_key(win.handle, GLFW_KEY_TAB) != GLFW_PRESS
     };
 
     let provider = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
-    let provider_lines = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data))};
+    let provider_lines = RenderDataProvider{pre_render_state: None, post_render_state: None, shader_data: Some(Box::new(shader_data_lines))};
 
 
     let mut render_info = RenderInfo{renderer: Box::new(renderer_tr_light), provider};//moved

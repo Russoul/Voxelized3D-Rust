@@ -79,19 +79,24 @@ pub struct Sphere<T : Scalar>{
 
 
 
-pub type DenFn2<T> = Box<Fn(Vector2<T>) -> T>;
+pub type DenFn2<'a, T> = Box<Fn(Vector2<T>) -> T + 'a>;
 pub type DenFn3<T> = Box<Fn(Vector3<T>) -> T>;
 
 
-pub fn intersection2<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+pub fn intersection2<'a, 'b, T : Real>(a : &'a DenFn2<'a, T>, b : &'a DenFn2<'a, T>) -> DenFn2<'b, T> where 'a : 'b{
     Box::new(move |x|{Real::max(a(x), b(x))})
 }
 
-pub fn union2<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+pub fn intersection2_move<'a, 'b, T : Real>(a : DenFn2<'a, T>, b : DenFn2<'a, T>) -> DenFn2<'b, T> where 'a : 'b{
+    Box::new(move |x|{Real::max((*a)(x), (*b)(x))})
+}
+
+pub fn union2<'a,'b, T : Real>(a : &'a DenFn2<T>, b : &'a DenFn2<T>) -> DenFn2<'b, T> where 'a : 'b{
     Box::new(move |x| {Real::min(a(x), b(x))})
 }
 
-pub fn difference2<T : Real>(a : DenFn2<T>, b : DenFn2<T>) -> DenFn2<T>{
+
+pub fn difference2<'a,'b, T : Real>(a : &'a DenFn2<T>, b : &'a DenFn2<T>) -> DenFn2<'b, T> where 'a : 'b{
     Box::new(move |x| {Real::max(a(x), -b(x))})
 }
 
@@ -141,27 +146,27 @@ pub fn noise_f32(perlin : Perlin, cube : Square3<f32>) -> DenFn3<f32>{
 }
 
 
-pub fn mk_circle2<T : Real + Copy>(center : Vector2<T>, rad : T) -> DenFn2<T>{
+pub fn mk_circle2<'a, T : Real + Copy>(center : Vector2<T>, rad : T) -> DenFn2<'a, T>{
     Box::new(move |x|{
         let dist = x - center;
         dist.dot(&dist) - rad * rad
     })
 }
 
-pub fn mk_half_plane2_left<T : Real + Copy>(x : T) -> DenFn2<T>{
+pub fn mk_half_plane2_left<'a, T : Real + Copy>(x : T) -> DenFn2<'a, T>{
     Box::new(move |p|{p.x - x})
 }
 
-pub fn mk_half_plane2_right<T : Real + Copy>(x : T) -> DenFn2<T>{
+pub fn mk_half_plane2_right<'a, T : Real + Copy>(x : T) -> DenFn2<'a, T>{
     Box::new(move |p|{x - p.x})
 }
 
 
-pub fn mk_half_plane2_lower<T : Real + Copy>(y : T) -> DenFn2<T>{
+pub fn mk_half_plane2_lower<'a, T : Real + Copy>(y : T) -> DenFn2<'a, T>{
     Box::new(move |p|{p.y - y})
 }
 
-pub fn mk_half_plane2_upper<T : Real + Copy>(y : T) -> DenFn2<T>{
+pub fn mk_half_plane2_upper<'a, T : Real + Copy>(y : T) -> DenFn2<'a, T>{
     Box::new(move |p|{y - p.y})
 }
 
@@ -199,19 +204,20 @@ pub fn mk_half_space_z_pos<T : Real + Copy>(z : T) -> DenFn3<T>{
     Box::new(move |p|{z - p.z})
 }
 
-
-pub fn mk_rectangle2<T : Real + Copy>(center : Vector2<T>, extent : Vector2<T>) -> DenFn2<T> {
+pub fn mk_rectangle2<'a, T : Real + Copy>(center : Vector2<T>, extent : Vector2<T>) -> DenFn2<'a, T> {
     let right = mk_half_plane2_right(center.x - extent.x);
     let left = mk_half_plane2_left(center.x + extent.x);
 
     let lower = mk_half_plane2_lower(center.y + extent.y);
     let upper = mk_half_plane2_upper(center.y - extent.y);
 
-    let i1 = intersection2(left, right);
-    let i2 = intersection2(upper, lower);
+    let i1 = intersection2_move(left, right);
+    let i2 = intersection2_move(upper, lower);
 
-    intersection2(i1, i2)
+    intersection2_move(i1, i2)
 }
+
+
 
 pub fn mk_aabb<T : Real + Copy>(center : Vector3<T>, extent : Vector3<T>) -> DenFn3<T> {
     let x_neg = mk_half_space_x_neg(center.x + extent.x);
@@ -226,6 +232,43 @@ pub fn mk_aabb<T : Real + Copy>(center : Vector3<T>, extent : Vector3<T>) -> Den
     let ix = intersection3(x_neg, x_pos);
     let iy = intersection3(y_neg, y_pos);
     let iz = intersection3(z_neg, z_pos);
+
+    let ixy = intersection3(ix, iy);
+
+    intersection3(ixy, iz)
+}
+
+pub fn mk_half_space_pos<T : Real + Copy>(plane : Plane<T>) -> DenFn3<T>{
+     Box::new(move |p|{
+        let d = p - plane.point;
+        let dist = d.dot(&plane.normal);
+        -dist 
+     })
+}
+
+pub fn mk_half_space_neg<T : Real + Copy>(plane : Plane<T>) -> DenFn3<T>{
+     Box::new(move |p|{
+        let d = p - plane.point;
+        let dist = d.dot(&plane.normal);
+        dist 
+     })
+}
+
+pub fn mk_obb<T : Real + Copy>(center : Vector3<T>, right : Vector3<T>, up : Vector3<T>, extent : Vector3<T>) -> DenFn3<T> {
+    let r_neg = mk_half_space_neg(Plane{point : center + right * extent.x, normal : right});
+    let r_pos = mk_half_space_pos(Plane{point : center - right * extent.x, normal : right});
+
+    let u_neg = mk_half_space_neg(Plane{point : center + up * extent.y, normal : up});
+    let u_pos = mk_half_space_pos(Plane{point : center - up * extent.y, normal : up});
+
+    let look = right.cross(&up);
+
+    let l_neg = mk_half_space_neg(Plane{point : center + look * extent.z, normal : look});
+    let l_pos = mk_half_space_pos(Plane{point : center - look * extent.z, normal : look});
+
+    let ix = intersection3(r_neg, r_pos);
+    let iy = intersection3(u_neg, u_pos);
+    let iz = intersection3(l_neg, l_pos);
 
     let ixy = intersection3(ix, iy);
 

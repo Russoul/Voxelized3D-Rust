@@ -274,6 +274,75 @@ pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Square3<f
     dat.vertex_count += 8;
 }
 
+pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n : usize, m : usize, color : Vector3<f32>){
+    use std;
+    let pi = std::f32::consts::PI;
+    let dphi = 2.0 * pi / n as f32;
+    let dpsi = pi / m as f32;
+
+    for i in 0..n{
+        let phi = i as f32 * dphi;
+        let phi_next = (i + 1) as f32 * dphi;
+        for j in 0..m{
+            let psi = j as f32 * dpsi;
+            let psi_next = (j + 1) as f32 * dpsi;
+
+            let x0 = phi.cos() * psi.sin() * sphere.rad;
+            let z0 = -phi.sin() * psi.sin() * sphere.rad;
+            let y0 = -psi.cos() * sphere.rad;
+
+            let x1 = phi_next.cos() * psi.sin() * sphere.rad;
+            let z1 = -phi_next.sin() * psi.sin() * sphere.rad;
+            let y1 = -psi.cos() * sphere.rad;
+
+            let x2 = phi.cos() * psi_next.sin() * sphere.rad;
+            let z2 = -phi.sin() * psi_next.sin() * sphere.rad;
+            let y2 = -psi_next.cos() * sphere.rad;
+
+            let x3 = phi_next.cos() * psi_next.sin() * sphere.rad;
+            let z3 = -phi_next.sin() * psi_next.sin() * sphere.rad;
+            let y3 = -psi_next.cos() * sphere.rad;
+
+            let v0 = Vector3::new(x0, y0, z0);
+            let v1 = Vector3::new(x1, y1, z1);
+            let v2 = Vector3::new(x2, y2, z2);
+            let v3 = Vector3::new(x3, y3, z3);
+
+            let normal = (v1 - v0).cross(&(v2 - v0)).normalize();
+
+             add_vector_to_pool(dat, sphere.center + v0);
+             add_vector_to_pool(dat, color);
+             add_vector_to_pool(dat, normal);
+
+             add_vector_to_pool(dat, sphere.center + v1);
+             add_vector_to_pool(dat, color);
+             add_vector_to_pool(dat, normal);
+
+             add_vector_to_pool(dat, sphere.center + v2);
+             add_vector_to_pool(dat, color);
+             add_vector_to_pool(dat, normal);
+
+             add_vector_to_pool(dat, sphere.center + v3);
+             add_vector_to_pool(dat, color);
+             add_vector_to_pool(dat, normal);
+            
+        }
+    }
+
+    for i in 0..n*m{
+        dat.index_pool.push(dat.vertex_count + 4*i as u32);
+        dat.index_pool.push(dat.vertex_count + 4*i as u32 + 1);
+        dat.index_pool.push(dat.vertex_count + 4*i as u32 + 2);
+
+        dat.index_pool.push(dat.vertex_count + 4*i as u32 + 1);
+        dat.index_pool.push(dat.vertex_count + 4*i as u32 + 3);
+        dat.index_pool.push(dat.vertex_count + 4*i as u32 + 2);
+    }
+
+    dat.vertex_count += n as u32 * m as u32 * 4;
+
+}
+
 pub fn add_grid3_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, tangent : Vector3<f32>, normal : Vector3<f32>, extent : f32, subdiv_num : u32, color : Vector3<f32>){
     let right = tangent.cross(&normal) * extent;
     let along = tangent * extent;

@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use num::PrimInt;
 use std::collections::HashMap;
+use qef_bindings::*;
 
 //uniform manifold dual contouring is a modification to dual marching cubes (hermite extension to dual marching cubes)
 
@@ -305,7 +306,7 @@ pub fn corner_points() -> Vec< Vector3<f32> >{
     vec![
         Vector3::new(0.0,0.0,0.0),
         Vector3::new(1.0,0.0,0.0),
-        Vector3::new(1.0,0.0,1.0),  //contour clockwise starting from zero y min
+        Vector3::new(1.0,0.0,1.0),  //clockwise starting from zero y min
         Vector3::new(0.0,0.0,1.0),
 
         Vector3::new(0.0,1.0,0.0),
@@ -455,6 +456,86 @@ fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
     qef
 }
 
+
+
+//works bad
+//try delta approuch
+//start from the center then find a direction in which qef increases most and move a bit along it
+fn solve_qef_iterative(square : &Square3<f32>, threshold : f32, planes : &Vec<Plane<f32>>) -> Vector3<f32>{
+
+    let mut vertex = square.center;
+    let mut next_iter = vertex;
+    
+
+    while threshold < calc_qef(&vertex, planes){
+        let mut qef : f32 = 0.0; //TODO
+        for plane in planes{
+            let dist_signed = plane.normal.dot(&(vertex - plane.point));
+            qef += dist_signed * dist_signed;
+            next_iter += plane.normal * dist_signed;
+        }
+
+        vertex = next_iter / (planes.len() as f32) * 0.7;
+        next_iter = vertex;
+    }
+
+    vertex
+}
+
+//does not work
+fn solve_qef_analically_ATA_ATb(planes : &Vec<Plane<f32>>) -> Option<Vector3<f32>>{
+    let normals : Vec<f32> = planes.iter().flat_map(|x| x.normal.as_slice().to_owned()).collect();
+    let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
+    //let intersections : Vec<f32> = planes.iter().flat_map(|x| x.point.as_slice().to_owned()).collect();
+    let product : Vec<f32> = planes.iter().map(|x| x.normal.dot(&x.point)).collect();
+    for i in 0..product.len(){
+        Abs.push(normals[3 * i]);
+        Abs.push(normals[3 * i + 1]);
+        Abs.push(normals[3 * i + 2]);
+        Abs.push(product[i]);
+    }
+
+    let A = DMatrix::from_row_slice(normals.len() / 3, 3, normals.as_slice());
+    let ATA = (&A).transpose() * &A;
+    let b = DMatrix::from_row_slice(product.len(), 1, product.as_slice());
+    let ATb = (&A).transpose() * &b; 
+    let Ab = DMatrix::from_row_slice(planes.len(), 4, Abs.as_slice());
+
+    let bTb = (&b).transpose() * (&b);
+    let mag = bTb.norm();
+
+    let qr = ATA.qr();
+    let solved = qr.solve(&ATb);
+    if solved.is_some(){
+        Some(Vector3::new(solved.as_ref().unwrap()[0], solved.as_ref().unwrap()[1], solved.as_ref().unwrap()[2]))
+    }else{
+        None
+    }
+}
+
+
+
+//minimizer + error
+fn solve_qef_via_bindings(planes : &Vec<Plane<f32>>) -> (Vector3<f32>,f32) {
+    let mut ATA = Matrix3::zeros();
+    let mut ATb = Vector3::zeros();
+
+    let mut accum = Vector4::zeros();
+
+    for plane in planes{
+        qef_add_r(plane.normal, plane.point, &mut ATA, &mut ATb, &mut accum);
+    }
+
+    let mut res = Vector3::zeros();
+
+    //println!("{}", &ATb);
+    //println!("{}", &ATA);
+    //println!("accum {}", &accum);
+    let err = qef_solve_r(ATA, ATb, accum, &mut res);
+    //println!("result is {}", &res);
+    (res, err)
+}
+
 fn sample_qef_brute(square : &Square3<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
     let ext = Vector3::new(square.extent, square.extent, square.extent);
     let min = square.center - ext;
@@ -511,9 +592,9 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
         let mut cached_cell = HashMap::new();
 
-        // if vertices.len() > 1 {
-        //     add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(1.0,0.0,0.0));
-        // }
+        if vertices.len() >= 1 { //render cells that contain more than 1 vertex
+            //add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(1.0,0.0,0.0));
+        }
 
         for vertex in vertices{
 
@@ -529,7 +610,9 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                 let edge = Line3{start : cell_min + v1 * a, end : cell_min + v2 * a};
 
                 let intersection = sample_surface_intersection(&edge, accuracy, f);
+                
                 let normal = sample_normal(&intersection, a / 100.0, f);
+                
 
                 let plane = Plane{point : intersection, normal};
                 hermite_data.insert(edge_id.clone(), plane);
@@ -539,8 +622,36 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
 
            
-            let minimizer = sample_qef_brute(&bounds, accuracy, &cur_planes);
+            //let minimizer_opt = solve_qef_analically_ATA_ATb(&cur_planes);
+            //let minimizer = if minimizer_opt.is_some() {minimizer_opt.unwrap()} else {bounds.center};
+            //let minimizer = sample_qef_brute(&bounds, 32, &cur_planes);
+            let try = solve_qef_via_bindings(&cur_planes);
+            let minimizer = 
+                if !point3_inside_square3_inclusive(&try.0, &bounds){
+                    println!("bad minimizer {}", &try.0);
+                    use rand;
+                    use rand::Rng;
+                    use rand::distributions::{Sample, Range};
+                    let mut rng = rand::thread_rng();
+                    let mut between = Range::new(0.0, 1.0);
+                    let r = between.sample(&mut rng);
+                    let g = between.sample(&mut rng);
+                    let b = between.sample(&mut rng);
 
+                    add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(r,g,b));
+                    add_square3_bounds_color(render_debug_lines, Square3{center : try.0, extent : 0.075/4.0}, Vector3::new(r,g,b));
+                    add_line3_color(render_debug_lines, Line3{start : bounds.center, end : try.0}, Vector3::new(r,g,b));
+
+                    for plane in &cur_planes{
+                        add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vector3::new(r,g,b));
+                        add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vector3::new(r,g,b));
+                    }
+
+                    bounds.center
+                }else{
+                    try.0
+                };
+            //add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vector3::new(1.0,1.0,0.0));
 
             for edge_id in &vertex { 
                 cached_cell.insert(edge_id.clone(), minimizer);//duplicates are not possible

@@ -180,3 +180,4 @@ pub fn make_tree(f : &DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize,
 
     tree
 }
+

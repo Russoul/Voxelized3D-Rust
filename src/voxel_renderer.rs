@@ -63,7 +63,7 @@ impl Hash for RenderID{
 pub struct RenderDataProvider<'a>{
     pub pre_render_state: Option<Box<Fn()->() + 'a>>,
     pub post_render_state: Option<Box<Fn()->() + 'a>>,
-    pub shader_data: Option<Box<Fn(&Program, &WindowInfo, &Camera)->() + 'a>>,
+    pub shader_data: Option<Box<Fn(&Program, &WindowInfo, &Camera)->bool + 'a>>, //returns whether to render or not
 }
 
 pub struct RenderInfo<'a>{
@@ -111,19 +111,23 @@ impl<'a> VoxelRenderer<'a>{
 
             }
 
-            if render_info.provider.shader_data.is_some(){
-                let ref opt = render_info.provider.shader_data;
-                match opt{
-                    &Some(ref x) => (*x)(shader, win_info, camera),
-                    _ => (),
+            let ok = {
+                match render_info.provider.shader_data.as_ref(){
+                    Some(ref x) => {
+                        let res = (*x)(shader, win_info, camera);
+                        res
+                    },
+                    _ => true,
                 }
 
+            };
+
+
+            if(ok){
+                render_info.renderer.construct();
+                render_info.renderer.draw();
+                render_info.renderer.deconstruct();
             }
-
-
-            render_info.renderer.construct();
-            render_info.renderer.draw();
-            render_info.renderer.deconstruct();
 
 
             if render_info.provider.post_render_state.is_some(){
@@ -154,17 +158,21 @@ impl<'a> VoxelRenderer<'a>{
 
             }
 
-            if render_info.provider.shader_data.is_some(){
-                let ref opt = render_info.provider.shader_data;
-                match opt{
-                    &Some(ref x) => (*x)(shader, win_info, camera),
-                    _ => (),
+            let ok = {
+                match render_info.provider.shader_data.as_ref(){
+                    Some(ref x) => {
+                        let res = (*x)(shader, win_info, camera);
+                        res
+                    },
+                    _ => true,
                 }
 
-            }
+            };
+
+            
 
             //manual construction and deconstruction !
-            render_info.renderer.draw();
+            if(ok){ render_info.renderer.draw();};
 
 
             if render_info.provider.post_render_state.is_some(){
@@ -186,7 +194,7 @@ impl<'a> VoxelRenderer<'a>{
 
 
 
-        fn provide_def(shader: &Program, win: &WindowInfo, camera : &Camera){ //shader will be already enabled
+        fn provide_def(shader: &Program, win: &WindowInfo, camera : &Camera) -> bool{ //shader will be already enabled
             shader.set_float4x4("P",  false, &[
                 1.0,0.0,0.0,0.0,
                 0.0,1.0,0.0,0.0,
@@ -197,9 +205,11 @@ impl<'a> VoxelRenderer<'a>{
                 0.0,1.0,0.0,0.0,
                 0.0,0.0,1.0,0.0,
                 0.0,0.0,0.0,1.0]);
+
+            true
         }
 
-        fn provide_ui(shader: &Program, win: &WindowInfo, camera : &Camera){ //shader will be already enabled
+        fn provide_ui(shader: &Program, win: &WindowInfo, camera : &Camera) -> bool{ //shader will be already enabled
             shader.set_float4x4("P",  false, &ortho(
                                                    0.0,
                                                    win.width as f32,
@@ -212,6 +222,8 @@ impl<'a> VoxelRenderer<'a>{
                 0.0,1.0,0.0,0.0,
                 0.0,0.0,1.0,0.0,
                 0.0,0.0,0.0,1.0]);
+
+            true
         }
 
 
@@ -224,10 +236,10 @@ impl<'a> VoxelRenderer<'a>{
                     Some(x) =>{
                         let provide_def_combined = move |shader: &Program, win: &WindowInfo, camera : &Camera|{
                             provide_def(shader, win, camera);
-                            x(shader, win, camera);
+                            x(shader, win, camera)
                         };
 
-                        renderer.provider.shader_data = Some(Box::new(provide_def_combined) as Box<Fn(&Program, &WindowInfo, &Camera)>);
+                        renderer.provider.shader_data = Some(Box::new(provide_def_combined) as Box<Fn(&Program, &WindowInfo, &Camera) -> bool>);
                     }
                 }
             },
@@ -237,10 +249,10 @@ impl<'a> VoxelRenderer<'a>{
                   Some(x) => {
                       let provide_ui_combined = move |shader: &Program, win: &WindowInfo, camera : &Camera|{
                           provide_ui(shader, win, camera);
-                          x(shader, win, camera);
+                          x(shader, win, camera)
                       };
 
-                      renderer.provider.shader_data = Some(Box::new(provide_ui_combined) as Box<Fn(&Program, &WindowInfo, &Camera)>);
+                      renderer.provider.shader_data = Some(Box::new(provide_ui_combined) as Box<Fn(&Program, &WindowInfo, &Camera) -> bool>);
                   }
               }
             },
