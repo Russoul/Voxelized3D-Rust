@@ -394,8 +394,15 @@ fn run_voxelized() {
     //construct_grid(&den4, Vector3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
 
     let test_sphere = Sphere{center : Vector3::new(2.7, 1.0, 0.0), rad : 2.4};
-    add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vector3::new(1.0, 1.0, 1.0));
-    construct_grid(&(mk_sphere(test_sphere)), Vector3::new(-0.5, 0.5, -0.5), 1.0/8.0, 2*8, 32, &mut renderer_tr_light, &mut renderer_lines);
+    let test_sphere2 = Sphere{center : Vector3::new(2.7, 3.0, 0.0), rad : 2.4};
+    let test_sphere3 = Sphere{center : Vector3::new(2.7, 1.0, 2.7), rad : 1.4};
+    let ts1 = mk_sphere(test_sphere);
+    let ts2 = mk_sphere(test_sphere2);
+    let ts22 = mk_sphere(test_sphere3);
+    let ts3 = difference3(ts1, ts2);
+    let ts4 = difference3(ts3, ts22);
+    //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vector3::new(1.0, 1.0, 1.0));
+    construct_grid(&ts4, Vector3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer_tr_light, &mut renderer_lines);
     ///------------------
 
     // let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
@@ -406,7 +413,7 @@ fn run_voxelized() {
 
     shaders.get("lighting").unwrap().enable();
     shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,Vector3::new(0.0, 8.0,0.0));
-    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green + blue) * 5.0);
+    shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green + blue) * 15.0);
 
     // println!("generated {} triangles", contour_data.triangles.len());
 

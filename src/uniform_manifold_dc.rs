@@ -415,9 +415,9 @@ fn sample_surface_intersection(line : &Line3<f32>, n : usize, f : &DenFn3<f32>) 
 }
 
 pub fn sample_normal(point : &Vector3<f32>, eps : f32, f : &DenFn3<f32>) -> Vector3<f32>{
-    Vector3::new( f(Vector3::new(point.x + eps, point.y, point.z)) - f(Vector3::new(point.x - eps, point.y, point.z)),
-                  f(Vector3::new(point.x, point.y + eps, point.z)) - f(Vector3::new(point.x, point.y - eps, point.z)),
-                  f(Vector3::new(point.x, point.y, point.z + eps)) - f(Vector3::new(point.x, point.y, point.z - eps)) ).normalize()
+    Vector3::new( f(Vector3::new(point.x + eps, point.y, point.z)) - f(Vector3::new(point.x, point.y, point.z)),
+                  f(Vector3::new(point.x, point.y + eps, point.z)) - f(Vector3::new(point.x, point.y, point.z)),
+                  f(Vector3::new(point.x, point.y, point.z + eps)) - f(Vector3::new(point.x, point.y, point.z)) ).normalize()
 }
 
 fn is_const_sign(a : f32, b : f32) -> bool {
@@ -482,7 +482,7 @@ fn solve_qef_iterative(square : &Square3<f32>, threshold : f32, planes : &Vec<Pl
     vertex
 }
 
-//does not work
+//works but the error is too great
 fn solve_qef_analically_ATA_ATb(planes : &Vec<Plane<f32>>) -> Option<Vector3<f32>>{
     let normals : Vec<f32> = planes.iter().flat_map(|x| x.normal.as_slice().to_owned()).collect();
     let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
@@ -513,7 +513,68 @@ fn solve_qef_analically_ATA_ATb(planes : &Vec<Plane<f32>>) -> Option<Vector3<f32
     }
 }
 
+fn solve_qef_analically_qr(planes : &Vec<Plane<f32>>, bounds : &Square3<f32>) -> Vector3<f32>{
+    let mut masspoint = Vector4::zeros();
+    let normals : Vec<f32> = planes.iter().flat_map(|x| {
+        masspoint += Vector4::new(x.point.x, x.point.y, x.point.z, 1.0);
+        x.normal.as_slice().to_owned()
+    }).collect();
+    let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
+    //let intersections : Vec<f32> = planes.iter().flat_map(|x| x.point.as_slice().to_owned()).collect();
+    let product : Vec<f32> = planes.iter().map(|x| x.normal.dot(&x.point)).collect();
+    for i in 0..product.len(){
+        Abs.push(normals[3 * i]);
+        Abs.push(normals[3 * i + 1]);
+        Abs.push(normals[3 * i + 2]);
+        Abs.push(product[i]);
+    }
 
+    let Ab = DMatrix::from_row_slice(planes.len(), 4, Abs.as_slice());
+
+
+    let qr1 = Ab.qr();
+    let R = qr1.r();
+
+    //println!("R : {}", &R);
+
+    let A1 = R.slice((0,0), (3,3));
+    let b1 = R.slice((0,3), (3,1));
+    let a1 = A1.fixed_slice::<U3,U3>(0,0);
+
+    //println!("A1 : {}", &A1);
+    //println!("b1 : {}", &b1);
+
+    let qr2 = A1.qr();
+
+    //println!("{}", a1.determinant().abs());
+    //let det = a1.determinant().abs();
+    let try = qr2.solve(&Vector3::new(b1[0], b1[1], b1[2]));
+    let solution = 
+        match try{
+            Some(min) => {
+                if point3_inside_sphere_inclusive(&min, Sphere{center : bounds.center, rad : 3.0.sqrt() * bounds.extent * 2.0}){
+                    min
+                }else{
+                    let temp = (masspoint / masspoint.w);
+                    Vector3::new(temp.x, temp.y, temp.z)
+                }
+            },
+            None => {
+                let temp = (masspoint / masspoint.w);
+                Vector3::new(temp.x, temp.y, temp.z)
+            }
+    };
+
+    //let mut r = unsafe{R.get_unchecked(3,3)};
+    //let svd = A1.svd(true,true); 
+    //let sol = svd.solve(&b1,0.0); //does not want to work
+
+    //Some(Vector3::new(sol[0], sol[1], sol[2]))  
+
+    solution
+
+  
+}
 
 //minimizer + error
 fn solve_qef_via_bindings(planes : &Vec<Plane<f32>>) -> (Vector3<f32>,f32) {
@@ -578,11 +639,13 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
         let bounds = grid.cube(x,y,z,offset);
         let mut densities = [0.0;8];
         let mut config = 0;
+        let mut corner_vertex_count = 0;
         for i in 0..8{
             let p = cell_min + corners[i] * a;
             densities[i] = f(p);
             if densities[i] < 0.0{
                 config |= 1 << i;
+                corner_vertex_count += 1;
             }
         }
 
@@ -611,7 +674,7 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
                 let intersection = sample_surface_intersection(&edge, accuracy, f);
                 
-                let normal = sample_normal(&intersection, a / 100.0, f);
+                let normal = sample_normal(&intersection, 1e-5, f);
                 
 
                 let plane = Plane{point : intersection, normal};
@@ -620,37 +683,70 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
             }
 
 
-
+            let is_valid_qef_estimation = |minimizer : &Vector3<f32>| -> bool{
+                point3_inside_sphere_inclusive(minimizer, Sphere{center : bounds.center, rad : 3.0.sqrt() * bounds.extent * 3.1})
+            };
            
             //let minimizer_opt = solve_qef_analically_ATA_ATb(&cur_planes);
             //let minimizer = if minimizer_opt.is_some() {minimizer_opt.unwrap()} else {bounds.center};
             //let minimizer = sample_qef_brute(&bounds, 32, &cur_planes);
-            let try = solve_qef_via_bindings(&cur_planes);
-            let minimizer = 
-                if !point3_inside_square3_inclusive(&try.0, &bounds){
-                    println!("bad minimizer {}", &try.0);
-                    use rand;
-                    use rand::Rng;
-                    use rand::distributions::{Sample, Range};
-                    let mut rng = rand::thread_rng();
-                    let mut between = Range::new(0.0, 1.0);
-                    let r = between.sample(&mut rng);
-                    let g = between.sample(&mut rng);
-                    let b = between.sample(&mut rng);
+            // let minimizer = if(corner_vertex_count > 1){
+            //     let try = solve_qef_via_bindings(&cur_planes);
+            //     let minimizer = 
+            //         if !is_valid_qef_estimation(&try.0){
+            //             println!("bad minimizer {}", &try.0);
+            //             use rand;
+            //             use rand::Rng;
+            //             use rand::distributions::{Sample, Range};
+            //             let mut rng = rand::thread_rng();
+            //             let mut between = Range::new(0.0, 1.0);
+            //             let r = between.sample(&mut rng);
+            //             let g = between.sample(&mut rng);
+            //             let b = between.sample(&mut rng);
 
-                    add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(r,g,b));
-                    add_square3_bounds_color(render_debug_lines, Square3{center : try.0, extent : 0.075/4.0}, Vector3::new(r,g,b));
-                    add_line3_color(render_debug_lines, Line3{start : bounds.center, end : try.0}, Vector3::new(r,g,b));
+            //             add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(r,g,b));
+            //             add_square3_bounds_color(render_debug_lines, Square3{center : try.0, extent : 0.075/4.0}, Vector3::new(r,g,b));
+            //             add_line3_color(render_debug_lines, Line3{start : bounds.center, end : try.0}, Vector3::new(r,g,b));
 
-                    for plane in &cur_planes{
-                        add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vector3::new(r,g,b));
-                        add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vector3::new(r,g,b));
-                    }
+            //             for plane in &cur_planes{
+            //                 add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vector3::new(r,g,b));
+            //                 add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vector3::new(r,g,b));
+            //             }
 
-                    bounds.center
-                }else{
-                    try.0
-                };
+            //             try.0
+            //         }else{
+            //             try.0
+            //         };
+
+            //     minimizer
+            // }else{
+            //     println!("sampled");
+            //     sample_qef_brute(&bounds, 32, &cur_planes)
+            // };
+            let minimizer = solve_qef_analically_qr(&cur_planes, &bounds);
+
+            // if !is_valid_qef_estimation(&minimizer){
+            //     println!("bad minimizer {}, det {}, err {}", &minimizer, try.1, calc_qef(&minimizer, &cur_planes));
+            //     use rand;
+            //     use rand::Rng;
+            //     use rand::distributions::{Sample, Range};
+            //     let mut rng = rand::thread_rng();
+            //     let mut between = Range::new(0.0, 1.0);
+            //     let r = between.sample(&mut rng);
+            //     let g = between.sample(&mut rng);
+            //     let b = between.sample(&mut rng);
+
+            //     add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(r,g,b));
+            //     add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vector3::new(r,g,b));
+            //     add_line3_color(render_debug_lines, Line3{start : bounds.center, end : minimizer}, Vector3::new(r,g,b));
+
+            //     for plane in &cur_planes{
+            //         add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vector3::new(r,g,b));
+            //         add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vector3::new(r,g,b));
+            //     }
+
+            // }
+
             //add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vector3::new(1.0,1.0,0.0));
 
             for edge_id in &vertex { 

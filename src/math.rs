@@ -330,6 +330,11 @@ pub fn point3_inside_square3_inclusive<T : Real>(point3 : &Vector3<T>, square3 :
     point3.z >= square3.center.z - square3.extent
 }
 
+pub fn point3_inside_sphere_inclusive<T : Real>(point3 : &Vector3<T>, sphere : Sphere<T>) -> bool {
+    let d = point3 - sphere.center;
+    d.dot(&d) <= sphere.rad * sphere.rad
+}
+
 pub fn vec3f_vec3d(a : Vector3<f64>) -> Vector3<f32>{
     Vector3::new(a.x as f32, a.y as f32, a.z as f32)
 }
