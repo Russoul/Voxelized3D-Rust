@@ -274,6 +274,46 @@ pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Square3<f
     dat.vertex_count += 8;
 }
 
+
+//for cubes
+fn centers() -> [Vector3<f32>;8]{
+    [Vector3::new(-0.5, -0.5, -0.5),
+     Vector3::new(0.5, -0.5, -0.5),
+     Vector3::new(0.5, -0.5, 0.5),
+     Vector3::new(-0.5, -0.5, 0.5),
+
+     Vector3::new(-0.5, 0.5, -0.5),
+     Vector3::new(0.5, 0.5, -0.5),
+     Vector3::new(0.5, 0.5, 0.5),
+     Vector3::new(-0.5, 0.5, 0.5)]
+}
+
+pub fn add_cube_color_normal(dat : &mut RendererVertFragDef, cube : Square3<f32>, color : Vector3<f32>){
+    let mut corners = [Vector3::zeros();8];
+
+    for i in 0..8{
+        corners[i] = centers()[i] * 2.0 * cube.extent + cube.center;
+    }
+
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[7], p2 : corners[0], p3 : corners[3]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[7], p3 : corners[4]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
+
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[6], p3 : corners[2]}, &color, &Vector3::new(1.0, 0.0, 0.0));
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[5], p3 : corners[6]}, &color, &Vector3::new(1.0, 0.0, 0.0));
+
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[4], p3 : corners[1]}, &color, &Vector3::new(0.0, 0.0, -1.0));
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[4], p3 : corners[5]}, &color, &Vector3::new(0.0, 0.0, -1.0));
+
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[7], p3 : corners[3]}, &color, &Vector3::new(0.0, 0.0, 1.0));
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[6], p3 : corners[7]}, &color, &Vector3::new(0.0, 0.0, 1.0));
+
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[2], p3 : corners[3]}, &color, &Vector3::new(0.0, -1.0, 0.0));
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[0], p3 : corners[1]}, &color, &Vector3::new(0.0, -1.0, 0.0));
+
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[4], p3 : corners[7]}, &color, &Vector3::new(0.0, 1.0, 0.0));
+    add_triangle_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[5], p3 : corners[4]}, &color, &Vector3::new(0.0, 1.0, 0.0));
+}
+
 pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n : usize, m : usize, color : Vector3<f32>){
     use std;
     let pi = std::f32::consts::PI;

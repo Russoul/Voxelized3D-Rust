@@ -1,5 +1,5 @@
 [package]
-name = "Voxelized2D-Rust"
+name = "Voxelized3D-Rust"
 version = "0.0.1"
 authors = ["russoul <russoulmc@gmail.com>"]
 build = "build.rs"
@@ -19,4 +19,5 @@ noise = "*"
 
 [build-dependencies]
 cc = "1.0"
+cmake = "0.1"
 

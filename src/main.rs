@@ -15,6 +15,7 @@ extern crate noise;
 use na::*;
 use na::core::Unit;
 
+mod cms;
 mod qef_bindings;
 mod adaptive_dc;
 mod graphics;
@@ -27,6 +28,7 @@ mod dc;
 mod dcm;
 mod matrix;
 mod uniform_manifold_dc;
+mod cubic;
 
 use noise::{NoiseModule, Perlin};
 use graphics::*;
@@ -255,6 +257,8 @@ fn main(){
        println!("{}", rec(Vector2::new(1.0,0.0)));
     }
 
+
+    
     //matrix::test_matrices();
     run_voxelized();
 }
@@ -322,11 +326,17 @@ fn run_voxelized() {
     
 
 
+    unsafe{
+        cubic::test_cubic_octree(&mut renderer_tr_light);
+    }
+
     add_grid3_color(&mut renderer_lines, zero, Vector3::new(0.0, 0.0, -1.0), Vector3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + red}, red);
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + green}, green);
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + blue}, blue);
+
+    //add_triangle_color_normal(&mut renderer_tr_light, &Triangle3{p1 : Vector3::new(-0.3, 0.0, -1.0), p2 : Vector3::new(0.3, 0.0, -1.0), p3 : Vector3::new(0.0, 0.5, -1.0)}, &red, &Vector3::new(0.0, 0.0, 1.0));
 
     //add_square3_bounds_color(&mut renderer_lines, Square3{center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
 
@@ -402,7 +412,7 @@ fn run_voxelized() {
     let ts3 = difference3(ts1, ts2);
     let ts4 = difference3(ts3, ts22);
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vector3::new(1.0, 1.0, 1.0));
-    construct_grid(&ts4, Vector3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer_tr_light, &mut renderer_lines);
+    //construct_grid(&ts4, Vector3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer_tr_light, &mut renderer_lines);
     ///------------------
 
     // let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
@@ -438,6 +448,8 @@ fn run_voxelized() {
 
         let persp = perspective(90.0, aspect, 0.1, 16.0);
         let view = view_dir(camera.pos, camera.look, camera.up);
+
+        println!("{}", persp);
 
 
         shader.set_float4x4("P", false, persp.as_slice());
