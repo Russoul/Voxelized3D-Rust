@@ -4,6 +4,8 @@
 
 ![UMDC + perlin noise](umdc_perlin_noise.png)
 
+![blocky terrain + perlin noise](cubic_terrain.png)
+
 # Dependencies
 * rust
 * glfw3
