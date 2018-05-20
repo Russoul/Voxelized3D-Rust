@@ -1,4 +1,3 @@
-#include "gc.h" //using libgc
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>

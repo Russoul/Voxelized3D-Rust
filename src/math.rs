@@ -327,9 +327,6 @@ pub fn point3_inside_sphere_inclusive<T : Real>(point3 : &Vector3<T>, sphere : S
     d.dot(&d) <= sphere.rad * sphere.rad
 }
 
-pub fn vec3f_vec3d(a : Vector3<f64>) -> Vector3<f32>{
-    Vector3::new(a.x as f32, a.y as f32, a.z as f32)
-}
 
 //column-major
 pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> [f32;16]{
