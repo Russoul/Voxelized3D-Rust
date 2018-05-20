@@ -15,9 +15,7 @@ extern crate noise;
 use na::*;
 use na::core::Unit;
 
-mod cms;
 mod qef_bindings;
-mod adaptive_dc;
 mod graphics;
 mod graphics_util;
 mod renderer;
@@ -47,7 +45,6 @@ use rand::distributions::{Sample, Range};
 use typenum::*;
 use core::storage::*;
 use generic_array::*;
-use adaptive_dc::*;
 use uniform_manifold_dc::*;
 
 use time::precise_time_ns;
