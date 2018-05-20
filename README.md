@@ -1,4 +1,4 @@
-# Voxelized2D-Rust
+# Voxelized3D-Rust
 
 ![UMDC + signed field geometry](uniform_manifold_dual_contouring.png)
 

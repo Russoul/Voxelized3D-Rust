@@ -10,7 +10,7 @@ use std;
 use typenum;
 use generic_array;
 use rand::Rng;
-use noise::{NoiseModule, Perlin};
+use noise::{NoiseFn, Perlin};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Triangle2<T : Scalar + Copy>{
@@ -122,17 +122,17 @@ pub fn octave_perlin2(perlin : &Perlin, x : f32, z : f32, octaves : usize, persi
     let k = 2.0.powi((octaves - 1) as i32);
 
     for i in 0..octaves{
-        total += (perlin.get([x * frequency / k, z * frequency / k]) + 1.0)/2.0 * amplitude;
+        total += (perlin.get([(x * frequency / k) as f64, (z * frequency / k) as f64]) + 1.0)/2.0 * amplitude as f64;
         max_value += amplitude;
         amplitude *= persistence;
         frequency *= 2.0;
     }
 
-    total / max_value
+    total as f32 / max_value
 }
 
 pub fn noise_f32(perlin : Perlin, cube : Square3<f32>) -> DenFn3<f32>{
-    box move |x| {
+    Box::new( move |x| {
         if point3_inside_square3_inclusive(&x, &cube){
             let den = -octave_perlin2(&perlin, x.x - (cube.center.x - cube.extent), x.z - (cube.center.z - cube.extent), 4, 0.56) * 2.0 * cube.extent;
             let dy = (x.y - (cube.center.y - cube.extent) ); //cube.extent / 2.0 ; // 0 - 1
@@ -142,7 +142,7 @@ pub fn noise_f32(perlin : Perlin, cube : Square3<f32>) -> DenFn3<f32>{
             0.01
         }
         
-    }
+    })
 }
 
 

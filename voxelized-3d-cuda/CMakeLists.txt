@@ -4,6 +4,9 @@ project(voxelized_3d_cuda)
 
 set(CMAKE_CXX_STANDARD 11)
 
+find_package(CUDA REQUIRED)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 #add_executable(voxelized_3d_cuda main.cpp cuda_test.cpp)
 
 #target_link_libraries(voxelized_3d_cuda cudart)

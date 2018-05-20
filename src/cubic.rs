@@ -6,7 +6,7 @@ use na::{Vector3,Real};
 use ptr;
 use renderer::*;
 use math::*;
-use noise::{NoiseModule, Perlin};
+use noise::{NoiseFn, Perlin};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -66,19 +66,19 @@ pub unsafe fn for_each_leaf<A>(root : *mut Node, f : &mut Box<A>, center : Vecto
 fn octave_perlin3(perlin : &Perlin, x : f32, y : f32, z : f32, octaves : usize, persistence : f32) -> f32{
     let mut total = 0.0;
     let mut frequency = 1.0;
-    let mut amplitude = 1.0;
+    let mut amplitude : f32 = 1.0;
     let mut max_value = 0.0;
 
     let k = 2.0.powi((octaves - 1) as i32);
 
     for i in 0..octaves{
-        total += (perlin.get([x * frequency / k, y * frequency / k, z * frequency / k]) + 1.0)/2.0 * amplitude;
+        total += (perlin.get([(x * frequency / k) as f64, (y * frequency / k) as f64, (z * frequency / k) as f64]) + 1.0)/2.0 * amplitude as f64;
         max_value += amplitude;
-        amplitude *= persistence;
+        amplitude *= persistence as f32;
         frequency *= 2.0;
     }
 
-    total / max_value
+    total as f32 / max_value
 }
 
 
@@ -112,12 +112,12 @@ pub unsafe fn test_cubic_octree(render : &mut RendererVertFragDef){
     //print_octree(*simplified, 0);
 
 
-    for_each_leaf(*simplified, &mut box |node, center, ext, lev|{
+    for_each_leaf(*simplified, &mut Box::new( |node : *mut Node, center, ext, lev|{
             if (*node).density.abs() <= 0.5{
                 //add_square3_bounds_color(render, Square3{center, extent : ext}, Vector3::new(1.0,1.0,1.0));
                 add_cube_color_normal(render, Square3{center, extent : ext}, Vector3::new(0.6, 0.4, 0.4));
             }
 
-        }, center, extent, 0);
+        }), center, extent, 0);
 }
 

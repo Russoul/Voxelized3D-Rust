@@ -1,4 +1,4 @@
-#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
+//#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
 
 
 extern crate generic_array;
@@ -30,7 +30,7 @@ mod matrix;
 mod uniform_manifold_dc;
 mod cubic;
 
-use noise::{NoiseModule, Perlin};
+use noise::{Perlin};
 use graphics::*;
 use std::ptr;
 use std::fs;
@@ -240,7 +240,7 @@ unsafe fn compose2<'a, A,B,C, F, G>(f : *const F, g : *const G) -> Box<Fn(A) -> 
     F :  Fn(A) -> B + 'a,
     G :  Fn(B) -> C + 'a{
     unsafe{
-        box move |a| (*g)( (*f)(a) )
+        Box::new( move |a| (*g)( (*f)(a) ) )
     }
 }
 

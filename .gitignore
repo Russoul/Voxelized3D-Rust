@@ -10,3 +10,8 @@ Cargo.lock
 **/*.rs.bk
 
 /.idea/
+voxelized-3d-cuda/CMakeFiles
+voxelized-3d-cuda/CMakeCache.txt
+voxelized-3d-cuda/Makefile
+voxelized-3d-cuda/cmake_install.cmake
+voxelized-3d-cuda/libvoxelized3d.a
