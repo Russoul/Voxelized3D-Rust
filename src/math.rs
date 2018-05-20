@@ -371,3 +371,4 @@ pub fn view_dir(pos : Vector3<f32>, look : Vector3<f32>, up : Vector3<f32>) -> M
                  xa.z, ya.z, za.z, 0.0,
                  -dot(&xa,&pos), -dot(&ya,&pos), -dot(&za,&pos), 1.0).transpose()
 }
+

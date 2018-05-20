@@ -8,7 +8,6 @@ extern crate alga;
 extern crate libc;
 extern crate ansi_term;
 extern crate time;
-extern crate num;
 extern crate rand;
 extern crate noise;
 

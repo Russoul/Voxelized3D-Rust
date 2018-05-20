@@ -5,7 +5,6 @@ use renderer::*;
 use alga::general::*;
 use std::rc::Rc;
 use std::cell::RefCell;
-use num::PrimInt;
 use std::collections::HashMap;
 use qef_bindings::*;
 

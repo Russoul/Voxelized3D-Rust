@@ -13,7 +13,6 @@ nalgebra = "0.14.4"
 typenum = "1.9.0"
 alga = "0.5.2"
 time = "0.1.39"
-num = "0.1.42"
 rand = "0.4"
 noise = "0.5.1"
 
