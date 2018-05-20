@@ -1,10 +1,10 @@
 # Voxelized3D-Rust
 
-![UMDC + signed field geometry](uniform_manifold_dual_contouring.png)
+![UMDC + signed field geometry](imgs/uniform_manifold_dual_contouring.png)
 
-![UMDC + perlin noise](umdc_perlin_noise.png)
+![UMDC + perlin noise](imgs/umdc_perlin_noise.png)
 
-![blocky terrain + perlin noise](cubic_terrain.png)
+![blocky terrain + perlin noise](imgs/cubic_terrain.png)
 
 # Dependencies
 * rust
