@@ -1,15 +1,11 @@
 
 use graphics::*;
 use renderer::*;
-use graphics_util::*;
 use math::*;
 use std::collections::HashMap;
-use std::error::Error;
 use std::hash::{Hash, Hasher};
-use std::rc::*;
 use std::cell::{RefCell,Cell};
 use std::borrow::BorrowMut;
-use std::cell::RefMut;
 use na::*;
 
 pub enum RenderLifetime{
@@ -23,7 +19,7 @@ pub enum RenderTransform{
     None,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RenderID{
     ID(usize),
 }
@@ -35,29 +31,7 @@ pub struct Camera{
     pub up : Vector3<f32>,
 }
 
-impl PartialEq for RenderID{
-    fn eq(&self, other: &RenderID) -> bool {
-        match self{
-            &RenderID::ID(x) => {
-                match other{
-                    &RenderID::ID(y) => x == y
-                }
-            }
-        }
-    }
-}
-impl Eq for RenderID{}
 
-impl Hash for RenderID{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self{
-            &RenderID::ID(x) => {
-                state.write_usize(x);
-                state.finish();
-            }
-        }
-    }
-}
 
 
 pub struct RenderDataProvider<'a>{
@@ -123,7 +97,7 @@ impl<'a> VoxelRenderer<'a>{
             };
 
 
-            if(ok){
+            if ok {
                 render_info.renderer.construct();
                 render_info.renderer.draw();
                 render_info.renderer.deconstruct();
@@ -172,7 +146,7 @@ impl<'a> VoxelRenderer<'a>{
             
 
             //manual construction and deconstruction !
-            if(ok){ render_info.renderer.draw();};
+            if ok { render_info.renderer.draw();};
 
 
             if render_info.provider.post_render_state.is_some(){
@@ -191,7 +165,6 @@ impl<'a> VoxelRenderer<'a>{
 
     pub fn push(&mut self, life: RenderLifetime, trans: RenderTransform, mut renderer: RenderInfo<'a>) -> Result<RenderID, &'static str>{
         if !self.shaders.contains_key(&renderer.renderer.shader_name()) {return Err("error: shader not found")}
-
 
 
         fn provide_def(shader: &Program, win: &WindowInfo, camera : &Camera) -> bool{ //shader will be already enabled

@@ -15,6 +15,7 @@ alga = "0.5.2"
 time = "0.1.39"
 rand = "0.4"
 noise = "0.5.1"
+num = "0.1.42"
 
 [build-dependencies]
 cc = "1.0"

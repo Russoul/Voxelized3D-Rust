@@ -1,16 +1,8 @@
 use na::*;
-use na::storage::Storage;
-use na::storage::ContiguousStorage;
-use generic_array::ArrayLength;
-use typenum::{Prod};
-use alga::linear::FiniteDimInnerSpace;
-use alga::general::SupersetOf;
-use std::fmt::Debug;
+use alga;
 use std;
-use typenum;
-use generic_array;
-use rand::Rng;
 use noise::{NoiseFn, Perlin};
+use num;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Triangle2<T : Scalar + Copy>{
@@ -370,5 +362,15 @@ pub fn view_dir(pos : Vector3<f32>, look : Vector3<f32>, up : Vector3<f32>) -> M
                  xa.y, ya.y, za.y, 0.0,
                  xa.z, ya.z, za.z, 0.0,
                  -dot(&xa,&pos), -dot(&ya,&pos), -dot(&za,&pos), 1.0).transpose()
+}
+
+
+
+pub fn factorial<A : num::Unsigned + Copy>(e : A) -> A{
+    if e == num::one::<A>() || e == num::zero::<A>(){
+        num::one::<A>()
+    }else{
+        e * factorial(e - num::one::<A>())
+    }
 }
 

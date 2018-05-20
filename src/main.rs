@@ -1,6 +1,5 @@
 //#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
 
-
 extern crate generic_array;
 extern crate nalgebra as na;
 extern crate typenum;
@@ -10,10 +9,12 @@ extern crate ansi_term;
 extern crate time;
 extern crate rand;
 extern crate noise;
+extern crate num;
 
 use na::*;
 use na::core::Unit;
 
+mod math_tests;
 mod qef_bindings;
 mod graphics;
 mod graphics_util;
@@ -32,7 +33,6 @@ use graphics::*;
 use std::ptr;
 use std::fs;
 use std::fs::File;
-use std::vec::*;
 use std::collections::HashMap;
 use graphics_util::*;
 use std::io::Read;
