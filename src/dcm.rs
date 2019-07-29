@@ -92,8 +92,8 @@ impl<T : Real + SupersetOf<f32>> VoxelMaterialGrid3<T>{ //TODO get,set by `t` (p
     }
 
     //bounding box of the cube
-    pub fn square3(&self, x : usize, y : usize, z : usize) -> Square3<T>{
-        Square3{center : Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    pub fn square3(&self, x : usize, y : usize, z : usize) -> Cube<T>{
+        Cube {center : Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
     }
 }
 
@@ -112,7 +112,7 @@ fn const_sign(a : u32, b : u32) -> bool {
 }
 
 
-fn sample_qef_brute(square : Square3<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
+fn sample_qef_brute(square : Cube<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
     let ext = Vector3::new(square.extent, square.extent, square.extent);
     let min = square.center - ext;
 

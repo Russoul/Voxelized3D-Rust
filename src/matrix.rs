@@ -3,221 +3,92 @@ use std::ops::*;
 use generic_array::*;
 use alga::general::*;
 use typenum::consts::*;
+use std::mem;
+use std::fmt::Debug;
+
+//Mat, new,
+
+pub trait Scalar: Copy + PartialEq + Debug  {
+}
+impl<T: Copy + PartialEq + Debug> Scalar for T {}
 
 #[derive(Clone, Debug)]
 pub struct Mat<T,N,M> where
     N : Mul<M>,
-    Prod<N,M> : ArrayLength<T>,{
+    Prod<N,M> : ArrayLength<T>{
 
         pub ar : GenericArray<T, typenum::Prod<N,M>>,
 }
 
-type Vec<T, N> = Mat<T,N,U1>;
-type Vec2<T> = Vec<T,U2>;
-type Vec3<T> = Vec<T,U3>;
-type Vec4<T> = Vec<T,U3>;
-
-
-impl <T : Identity<Additive>, N, M> Mat<T,N,M> where
+impl<T : Scalar, N : Clone, M : Clone> Copy for Mat<T, N, M>where
     N : Mul<M>,
-    typenum::Prod<N,M> : ArrayLength<T>,{
-    
-
-    fn new_empty() -> Mat<T,N,M>{
-        let ar = GenericArray::generate(|_| T::identity());
-        Mat{ar}
-    }
-}
-
-impl<T : Copy> Vec2<T>{
-    fn new(x : T, y : T) -> Vec2<T>{
-        Vec::<T, U2>{ar : GenericArray::<T, U2>::clone_from_slice(&[x,y])}
-    }
-
-    fn x(&self) -> T{
-        self.ar[0]
-    }
-
-    fn y(&self) -> T{
-        self.ar[1]
-    }
-}
-
-impl<T : Copy> Vec3<T>{
-    fn new(x : T, y : T, z : T) -> Vec3<T>{
-        Vec::<T, U3>{ar : GenericArray::<T, U3>::clone_from_slice(&[x,y,z])}
-    }
-
-    fn x(&self) -> T{
-        self.ar[0]
-    }
-
-    fn y(&self) -> T{
-        self.ar[1]
-    }
-
-    fn z(&self) -> T{
-        self.ar[2]
-    }
-}
-
-
-impl<T : Copy + Mul<Output=T> + Add<Output=T> + Sub<Output=T>> Vec3<T>{
-
-    fn cross(&self, other : &Vec3<T>) -> Vec3<T>{
-        Vec3::new(self.y() * other.z() - other.y() * self.z(), other.x() * self.z() -self.x() * other.z(), self.x() * other.y() - other.x() * self.y())
-    }
-}
-
-impl <T, N, M> Mat<T,N,M> where
-    N : Mul<M>,
-    Prod<N,M> : ArrayLength<T>,{
-    
-
-    fn get(&self, i : usize) -> &T{
-        &self.ar[i]
-    }
-}
-
-impl<T,N> Index<usize> for Vec<T,N> where
-    N : Mul<U1>,
-    Prod<N,U1> : ArrayLength<T>,{
-
-    type Output = T;
-
-    fn index(&self, i : usize) -> &T{
-        &self.ar[i]
-    }
+    Prod<N,M> : ArrayLength<T>,
+    GenericArray<T, typenum::Prod<N,M>> : Copy{
 
 }
 
 
-impl<T,N> IndexMut<usize> for Vec<T,N> where
-    N : Mul<U1>,
-    Prod<N,U1> : ArrayLength<T>,{
-
-
-    fn index_mut(&mut self, i : usize) -> &mut T{
-        &mut self.ar[i]
+macro_rules! coords_impl(
+    ($T: ident; $($comps: ident),*) => {
+        /// Data structure used to provide access to matrix and vector coordinates with the dot
+        /// notation, e.g., `v.x` is the same as `v[0]` for a vector.
+        #[repr(C)]
+        #[derive(Eq, PartialEq, Clone, Hash, Debug, Copy)]
+        pub struct $T<N : Scalar> {
+            $(pub $comps: N),*
+        }
     }
+);
 
-}
-
-impl<T,N,M> Index<(usize, usize)> for Mat<T,N,M> where
-    N : Unsigned,
-    M : Unsigned,
-    N : Mul<M>,
-    Prod<N,M> : ArrayLength<T>,{
-
-    type Output = T;
-
-    fn index(&self, i : (usize, usize)) -> &T{
-        &self.ar[i.0 * N::to_usize() + i.1]
-    }
-
-}
-
-impl<T,N,M> IndexMut<(usize, usize)> for Mat<T,N,M> where
-    N : Unsigned,
-    M : Unsigned,
-    N : Mul<M>,
-    Prod<N,M> : ArrayLength<T>,{
+coords_impl!(X; x);
+coords_impl!(XY; x, y);
+coords_impl!(XYZ; x, y, z);
+coords_impl!(XYZW; x, y, z, w);
 
 
-    fn index_mut(&mut self, i : (usize, usize)) -> &mut T{
-        &mut self.ar[i.0 * N::to_usize() + i.1]
-    }
+macro_rules! deref_impl(
+    ($R: ty, $C: ty; $Target: ident) => {
+        impl<N : Scalar> Deref for Mat<N, $R, $C>{
+            type Target = $Target<N>;
 
-}
-
-impl<'a,
-     'b,
-     T : Add<Output=T> + Copy,
-     N,
-     M>
-     
-     Add<& 'b Mat<T,N,M>>
-    
-for & 'a Mat<T,N,M> where N : Mul<M>, Prod<N,M> : ArrayLength<T>{
-    
-    type Output = Mat<T,N,M>;
-
-    fn add(self, other : & 'b Mat<T,N,M>) -> Mat<T,N,M>{
-        Mat{ar : GenericArray::<T, Prod<N, M>>::
-              generate(&|i| self.get(i).clone() + other.get(i).clone())}
-    }
-
-}
-
-impl<'a,
-     'b,
-     T : Sub<Output=T> + Copy,
-     N,
-     M>
-     
-     Sub<& 'b Mat<T,N,M>>
-    
-for & 'a Mat<T,N,M> where N : Mul<M>, Prod<N,M> : ArrayLength<T>{
-    
-    type Output = Mat<T,N,M>;
-
-    fn sub(self, other : & 'b Mat<T,N,M>) -> Mat<T,N,M>{
-        Mat{ar : GenericArray::<T, Prod<N, M>>::
-              generate(&|i| self.get(i).clone() - other.get(i).clone())}
-    }
-
-}
-
-impl<
-     T : Mul<Output=T> + Add<Output=T> + Copy + AbstractMonoid<Additive>,
-     N>
-     
-Vec<T,N> where N : Mul<U1> + Unsigned, Prod<N,U1> : ArrayLength<T>{
-    
-
-    fn dot(&self, other : &Vec<T,N>) -> T{
-        let mut res = T::identity();
-        for i in 0..<N as Unsigned>::to_usize(){
-            res = res + self.ar[i] * other.ar[i];
+            #[inline]
+            fn deref(&self) -> &Self::Target {
+                unsafe { mem::transmute(&self.ar) }
+            }
         }
 
-        res
+        impl<N : Scalar> DerefMut for Mat<N, $R, $C>{
+            #[inline]
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                unsafe { mem::transmute(&mut self.ar) }
+            }
+        }
     }
+);
 
-}
+deref_impl!(U1, U1; X);
+deref_impl!(U2, U1; XY);
+deref_impl!(U3, U1; XYZ);
+deref_impl!(U4, U1; XYZW);
 
-macro_rules! vec2 {
-    ( $x:expr , $y:expr) => {
-        {
-            Vec2::new($x, $y)
-        }
-    };
-}
+coords_impl!(M2x2; m11, m21,
+                   m12, m22);
+coords_impl!(M3x3; m11, m21, m31,
+                   m12, m22, m32,
+                   m13, m23, m33);
 
-macro_rules! vec3 {
-    ( $x:expr , $y:expr, $z:expr ) => {
-        {
-            Vec3::new($x, $y, $z)
-        }
-    };
-}
+coords_impl!(M4x4; m11, m21, m31, m41,
+                   m12, m22, m32, m42,
+                   m13, m23, m33, m43,
+                   m14, m24, m34, m44);
 
-pub fn test_matrices(){
-    let a = Vec::<_, U3>{ar : arr!(i32; 1,0,0)};
-    let b = Vec::<_, U3>{ar : arr!(i32; -1,0,0)};
-    let c = (&a) + (&b);
+deref_impl!(U2, U2; M2x2);
+deref_impl!(U3, U3; M3x3);
+deref_impl!(U4, U4; M4x4);
 
-    let mut d = vec3!(1,2,3);
+pub type Vec<T, N> = Mat<T,N,U1>;
+pub type Vec2<T> = Vec<T,U2>;
+pub type Vec3<T> = Vec<T,U3>;
+pub type Vec4<T> = Vec<T,U3>;
 
-    let i = vec3!(1,0,0);
-    let j = vec3!(0,1,0);
-    
-    d[1] = 0;
-    d[(0,1)] = 0;
 
-    println!("{:?} + {:?} = {:?}", a, b, c);
-    println!("{}", (&d).dot(&d));
-    println!("{:?}", (&i).cross(&j));
-
-    //TODO macros for creation
-}

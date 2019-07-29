@@ -2,6 +2,7 @@
 
 in vec3 colorFrag;
 
+out vec4 fragColor;
 
 void main()
 {
@@ -10,5 +11,5 @@ void main()
 	//pos.x <= discardRecMax.x && pos.y <= discardRecMax.y ) color = vec4(0,0,0,0);
 
 
-	gl_FragColor = vec4(colorFrag,1);
+	fragColor = vec4(colorFrag,1);
 } 

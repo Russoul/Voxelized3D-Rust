@@ -5,9 +5,11 @@ uniform sampler2D textureID;
 
 uniform vec3 extraColor;
 
+out vec4 fragColor;
+
 void main()
 {
-    vec4 c = texture2D(textureID, TexCoord);
+    vec4 c = texture(textureID, TexCoord);
 
     c.x *= extraColor.x;
     c.y *= extraColor.y;
@@ -16,5 +18,5 @@ void main()
     if(c.a < 0.1)
         discard;
 
-    gl_FragColor = c;
+    fragColor = c;
 }

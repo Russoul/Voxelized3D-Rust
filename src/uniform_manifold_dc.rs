@@ -377,8 +377,8 @@ impl<T : Real + SupersetOf<f32>> HermiteGrid<T>{
     }
 
     //bounding box of the cell
-    pub fn cube(&self, x : usize, y : usize, z : usize, offset : Vector3<T>) -> Square3<T>{
-        Square3{center : offset + Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    pub fn cube(&self, x : usize, y : usize, z : usize, offset : Vector3<T>) -> Cube<T>{
+        Cube {center : offset + Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
     }
 }
 
@@ -460,7 +460,7 @@ fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
 //works bad
 //try delta approuch
 //start from the center then find a direction in which qef increases most and move a bit along it
-fn solve_qef_iterative(square : &Square3<f32>, threshold : f32, planes : &Vec<Plane<f32>>) -> Vector3<f32>{
+fn solve_qef_iterative(square : &Cube<f32>, threshold : f32, planes : &Vec<Plane<f32>>) -> Vector3<f32>{
 
     let mut vertex = square.center;
     let mut next_iter = vertex;
@@ -512,7 +512,7 @@ fn solve_qef_analically_ATA_ATb(planes : &Vec<Plane<f32>>) -> Option<Vector3<f32
     }
 }
 
-fn solve_qef_analically_qr(planes : &Vec<Plane<f32>>, bounds : &Square3<f32>) -> Vector3<f32>{
+fn solve_qef_analically_qr(planes : &Vec<Plane<f32>>, bounds : &Cube<f32>) -> Vector3<f32>{
     let mut masspoint = Vector4::zeros();
     let normals : Vec<f32> = planes.iter().flat_map(|x| {
         masspoint += Vector4::new(x.point.x, x.point.y, x.point.z, 1.0);
@@ -596,7 +596,7 @@ fn solve_qef_via_bindings(planes : &Vec<Plane<f32>>) -> (Vector3<f32>,f32) {
     (res, err)
 }
 
-fn sample_qef_brute(square : &Square3<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
+fn sample_qef_brute(square : &Cube<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
     let ext = Vector3::new(square.extent, square.extent, square.extent);
     let min = square.center - ext;
 
@@ -624,7 +624,7 @@ fn sample_qef_brute(square : &Square3<f32>, n : usize, planes : &Vec<Plane<f32>>
 
 
 //constructs grid: calculates hermite data and configuration for each cell
-//TODO generating triangles write in this function would benefit performance (no extra looping through cells)
+//TODO generating triangles right in this function would benefit performance (no extra looping through cells)
 pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
     let corners = corner_points();
     let edge_pairs = edge_pairs();

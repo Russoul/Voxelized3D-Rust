@@ -13,6 +13,8 @@ struct PointLight
 
 uniform PointLight pointLight;
 
+out vec4 fragColor;
+
 void main()
 {
     vec3 ambientLight = vec3(0.2,0.2,0.2);
@@ -30,5 +32,5 @@ void main()
 
 
 
-	gl_FragColor = vec4(resulting,1);
+    fragColor = vec4(resulting,1);
 } 

@@ -10,14 +10,14 @@ fn main() {
         .include("include")
         .compile("rsutil");
 
-    let dst = cmake::build("voxelized-3d-cuda");
+    /*let dst = cmake::build("voxelized-3d-cuda");
 
     println!("cmake project generated at {}", dst.display());
 
 
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=stdc++");
-    println!("cargo:rustc-link-lib=static=voxelized3d");
+    println!("cargo:rustc-link-lib=static=voxelized3d");*/
     
     
 }

@@ -45,12 +45,12 @@ pub struct Square2<T : Scalar>{
 
 //axis aligned
 #[derive(Clone, Copy, Debug)]
-pub struct Square3<T : Real>{
+pub struct Cube<T : Real>{
     pub center : Vector3<T>,
     pub extent : T,
 }
 
-impl<T : Real> Square3<T>{
+impl<T : Real> Cube<T>{
     pub fn min(&self) -> Vector3<T>{
         self.center - Vector3::new(self.extent,self.extent,self.extent)
     }
@@ -65,9 +65,6 @@ pub struct Sphere<T : Scalar>{
     pub center : Vector3<T>,
     pub rad : T,
 }
-
-
-
 
 
 
@@ -123,7 +120,7 @@ pub fn octave_perlin2(perlin : &Perlin, x : f32, z : f32, octaves : usize, persi
     total as f32 / max_value
 }
 
-pub fn noise_f32(perlin : Perlin, cube : Square3<f32>) -> DenFn3<f32>{
+pub fn noise_f32(perlin : Perlin, cube : Cube<f32>) -> DenFn3<f32>{
     Box::new( move |x| {
         if point3_inside_square3_inclusive(&x, &cube){
             let den = -octave_perlin2(&perlin, x.x - (cube.center.x - cube.extent), x.z - (cube.center.z - cube.extent), 4, 0.56) * 2.0 * cube.extent;
@@ -311,7 +308,7 @@ pub fn distance_point3_plane<T : Real>(point3 : &Vector3<T>, plane : &Plane<T>) 
     Real::abs(plane.normal.dot(&vec))
 }
 
-pub fn point3_inside_square3_inclusive<T : Real>(point3 : &Vector3<T>, square3 : &Square3<T>) -> bool{
+pub fn point3_inside_square3_inclusive<T : Real>(point3 : &Vector3<T>, square3 : &Cube<T>) -> bool{
     point3.x <= square3.center.x + square3.extent &&
     point3.x >= square3.center.x - square3.extent &&
 

@@ -105,8 +105,16 @@ pub struct GlfwVidMode{
     refresh_rate : c_int,
 }
 
-#[link(name = "GL")]
-#[link(name = "glfw")]
+#[cfg_attr(windows, link(name = "opengl32"))]
+#[cfg_attr(linux, link(name = "GL"))]
+#[cfg_attr(target_os = "macos", link(name = "OpenGL", kind = "framework"))]
+#[cfg_attr(target_os = "macos", link(name = "Cocoa", kind = "framework"))]
+#[cfg_attr(target_os = "macos", link(name = "IOKit", kind = "framework"))]
+#[cfg_attr(target_os = "macos", link(name = "CoreVideo", kind = "framework"))]
+
+//-framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
+//#[link(name = "OpenGL", kind = "framework")]
+#[link(name = "glfw3")]
 #[link(name = "rsutil")]
 extern {
     fn glfwInit();
@@ -127,7 +135,7 @@ extern {
                           callback : extern fn (*mut GlfwWindow, isize, isize, isize, isize));
     fn glfwSetMouseButtonCallback(win : *mut GlfwWindow, cb :
                                   extern fn(*mut GlfwWindow, isize, isize, isize));
-    fn glfwSetErrorCallback(cb : extern fn(isize, &str));//TODO works with &str?
+    fn glfwSetErrorCallback(cb : extern fn(c_int, *const c_char));//TODO works with &str?
     fn glfwWindowShouldClose(win : *mut GlfwWindow) -> bool;
     fn glfwSwapBuffers(win : *mut GlfwWindow);
     fn glfwPollEvents();
@@ -375,7 +383,7 @@ pub fn gl_create_program()->usize{
     unsafe{glCreateProgram()}
 }
 
-pub fn glfw_set_error_callback(cb : extern fn(isize, &str)){
+pub fn glfw_set_error_callback(cb : extern fn(c_int, *const c_char)){
     unsafe{
         glfwSetErrorCallback(cb);
     }

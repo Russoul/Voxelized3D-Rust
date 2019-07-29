@@ -251,7 +251,7 @@ pub fn add_line3_color(dat : &mut RendererVertFragDef, line : Line3<f32>, color 
     dat.vertex_count += 2;
 }
 
-pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Square3<f32>, color : Vector3<f32>){
+pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Cube<f32>, color : Vector3<f32>){
     add_vector_to_pool(dat, Vector3::new(cube.center.x - cube.extent, cube.center.y - cube.extent, cube.center.z - cube.extent));
     add_vector_to_pool(dat, color);
     add_vector_to_pool(dat, Vector3::new(cube.center.x + cube.extent, cube.center.y - cube.extent, cube.center.z - cube.extent));
@@ -288,7 +288,7 @@ fn centers() -> [Vector3<f32>;8]{
      Vector3::new(-0.5, 0.5, 0.5)]
 }
 
-pub fn add_cube_color_normal(dat : &mut RendererVertFragDef, cube : Square3<f32>, color : Vector3<f32>){
+pub fn add_cube_color_normal(dat : &mut RendererVertFragDef, cube : Cube<f32>, color : Vector3<f32>){
     let mut corners = [Vector3::zeros();8];
 
     for i in 0..8{
@@ -439,6 +439,6 @@ pub fn add_grid3_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, ta
         dat.index_pool.push(off0 + 3*off1 - i - 1 + dat.vertex_count);
     }
 
-    dat.vertex_count += 4 + 4 * (2 * subdiv_num - 1) //TODO ???
+    dat.vertex_count += 4 + 4 * (2 * subdiv_num - 1)
 }
 

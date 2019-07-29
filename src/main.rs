@@ -13,6 +13,8 @@ extern crate num;
 
 use na::*;
 use na::core::Unit;
+use libc::*;
+use std::ffi::*;
 
 mod math_tests;
 mod qef_bindings;
@@ -25,8 +27,9 @@ mod voxel_renderer;
 mod dc;
 mod dcm;
 mod matrix;
+mod matrix_ops;
 mod uniform_manifold_dc;
-mod cubic;
+//mod cubic;
 
 use noise::{Perlin};
 use graphics::*;
@@ -41,12 +44,13 @@ use math::*;
 use voxel_renderer::*;
 use std::ops::*;
 use rand::distributions::{Sample, Range};
-use typenum::*;
+use typenum::{Cube as _, Prod, Unsigned};
 use core::storage::*;
 use generic_array::*;
 use uniform_manifold_dc::*;
 
 use time::precise_time_ns;
+use matrix_ops::test_matrices;
 
 fn timed<T>(str_fn: &(Fn(u64) -> String), f : &mut (FnMut() -> T)) -> T{
     let t1 = precise_time_ns();
@@ -74,8 +78,12 @@ extern fn framebuf_sz_cb(win : *mut GlfwWindow, w : isize, h : isize){
     gl_viewport(0,0,w,h);
 }
 
-extern fn error_cb(n : isize, er : &str){
-    println!("{}", er);
+extern fn error_cb(n : c_int, er : *const c_char){
+    unsafe{
+        let str = CStr::from_ptr(er);
+
+        println!("{}", str.to_str().unwrap());
+    }
 }
 
 fn check_for_gl_errors(){
@@ -242,6 +250,8 @@ unsafe fn compose2<'a, A,B,C, F, G>(f : *const F, g : *const G) -> Box<Fn(A) -> 
 
 
 fn main(){
+
+    test_matrices();
    
     let id = |x : usize| x;
     unsafe{
@@ -252,6 +262,7 @@ fn main(){
        let rec = mk_rectangle2(Vector2::new(0.0, 0.0), Vector2::new(1.0, 2.0));
        println!("{}", rec(Vector2::new(1.0,0.0)));
     }
+
 
 
     
@@ -272,6 +283,9 @@ fn run_voxelized() {
     glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfw_window_hint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    if cfg!(target_os = "macos") {
+        glfw_window_hint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    }
 
     let win = glfw_create_window(def_width, def_height, "Voxelized2D");
 
@@ -322,9 +336,9 @@ fn run_voxelized() {
     
 
 
-    unsafe{
+    /*unsafe{
         cubic::test_cubic_octree(&mut renderer_tr_light);
-    }
+    }*/
 
     add_grid3_color(&mut renderer_lines, zero, Vector3::new(0.0, 0.0, -1.0), Vector3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
@@ -332,9 +346,9 @@ fn run_voxelized() {
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + green}, green);
     add_line3_color(&mut renderer_lines, Line3{start : zero, end : zero + blue}, blue);
 
-    //add_triangle_color_normal(&mut renderer_tr_light, &Triangle3{p1 : Vector3::new(-0.3, 0.0, -1.0), p2 : Vector3::new(0.3, 0.0, -1.0), p3 : Vector3::new(0.0, 0.5, -1.0)}, &red, &Vector3::new(0.0, 0.0, 1.0));
+    add_triangle_color_normal(&mut renderer_tr_light, &Triangle3{p1 : Vector3::new(-0.3, 0.0, -1.0), p2 : Vector3::new(0.3, 0.0, -1.0), p3 : Vector3::new(0.0, 0.5, -1.0)}, &red, &Vector3::new(0.0, 0.0, 1.0));
 
-    //add_square3_bounds_color(&mut renderer_lines, Square3{center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
+    add_square3_bounds_color(&mut renderer_lines, Cube {center : Vector3::new(-0.5, 0.5, -0.5), extent : 0.125 / 2.0}, red + green);
 
 
 
@@ -366,7 +380,7 @@ fn run_voxelized() {
     }); */
 
     let den1 = dcm::union3_mat(sphere11, sphere2);
-    let den = dcm::intersection3_mat_a(den1, sphere1);
+    let den111 = dcm::intersection3_mat_a(den1, sphere1);
     //let den = union3(den1, aabb);
 
     //dc::test_sample_normal();
@@ -374,9 +388,9 @@ fn run_voxelized() {
 
     //ADAPTIVE---------
     // let sp_num = mk_sphere(Sphere{center : Vector3::new(-4.0, -4.0, -4.0), rad : 1.0});
-    // let tree = timed(&|dt| format!("make tree took {} ms", dt / 1000000), &mut ||{
-    //    make_tree(&sp_num, Vector3::new(-5.0, -5.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, &mut renderer_lines)
-    // });
+    //    // let tree = timed(&|dt| format!("make tree took {} ms", dt / 1000000), &mut ||{
+    //    //    make_tree(&sp_num, Vector3::new(-5.0, -5.0, -5.0), BLOCK_SIZE, CHUNK_SIZE, &mut renderer_lines)
+    //    // });
 
     //-----------------
 
@@ -389,13 +403,14 @@ fn run_voxelized() {
     let torusz = mk_torus_z(2.0, 0.8,Vector3::new(0.0,0.0,-4.0));
     let torusy = mk_torus_y(1.6, 0.67,Vector3::new(2.0,0.0,-4.0));
     let perlin = Perlin::new();
-    let noise = noise_f32(perlin, Square3{center : Vector3::new(1.0,-1.0,1.0), extent : 3.5} );//perlin.get([p.x,p.y,p.z])  ;
+    let noise = noise_f32(perlin, Cube {center : Vector3::new(1.0, -1.0, 1.0), extent : 3.5} );//perlin.get([p.x,p.y,p.z])  ;
     let two_torus = union3(torusz, torusy);
     let den2 = difference3(two_torus, mk_aabb(Vector3::new(0.0, 3.0, -4.0), Vector3::new(1.5,1.5,1.5)));
     let den3 = union3(den2, mk_sphere(Sphere{center : Vector3::new(0.0, 2.0, -4.0), rad : 1.0}));
     let den4 = union3(den3, mk_obb(Vector3::new(1.0, 1.0, 0.0), Vector3::new(1.0, -1.0, 0.0).normalize(), Vector3::new(1.0, 1.0, 0.5).normalize(), Vector3::new(1.0, 0.5, 0.2)));
     //let den4 = union3(den3, mk_half_space_pos(Plane{point : Vector3::new(0.0, 2.0, -4.0), normal : Vector3::new(1.0, 1.0, 0.0).normalize()}));
-    //let den = f;
+
+    let den = den4;
     //TODO implement DenFn differently, like noise library
     //construct_grid(&den4, Vector3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
 
@@ -411,21 +426,21 @@ fn run_voxelized() {
     //construct_grid(&ts4, Vector3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer_tr_light, &mut renderer_lines);
     ///------------------
 
-    // let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
-    //     dcm::fill_in_grid(&mut grid, &den, Vector3::new(0.0, 0.0, 0.0));
-    //     dcm::make_contour(&grid, &den, 16, &mut renderer_lines) //accurary depends on grid resolution
-    // });
+     let contour_data = timed(&|dt| format!("op took {} ms", dt / 1000000), &mut ||{
+         dcm::fill_in_grid(&mut grid, &den111, Vector3::new(0.0, 0.0, 0.0));
+         dcm::make_contour(&grid, &den111, 16, &mut renderer_lines) //accurary depends on grid resolution
+     });
 
 
     shaders.get("lighting").unwrap().enable();
     shaders.get("lighting").unwrap().set_vec3f("pointLight.pos" ,Vector3::new(0.0, 8.0,0.0));
     shaders.get("lighting").unwrap().set_vec3f("pointLight.color" ,(red + green + blue) * 15.0);
 
-    // println!("generated {} triangles", contour_data.triangles.len());
+     println!("generated {} triangles", contour_data.triangles.len());
 
-    // for i in 0..contour_data.triangles.len(){
-    //     //add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
-    // }
+     for i in 0..contour_data.triangles.len(){
+         add_triangle_color_normal(&mut renderer_tr_light, &contour_data.triangles[i], &contour_data.triangle_colors[i / 2], &contour_data.triangle_normals[i / 2]);
+     }
     //===================================
 
 
