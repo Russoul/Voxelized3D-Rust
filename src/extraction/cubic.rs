@@ -20,7 +20,7 @@ pub struct Node{
 extern{
     pub fn alloc_grid(size : usize, grid : *mut *mut *mut Node);
     pub fn gen_dense_grid(size : usize, center : Vector3<f32>, extent : f32, dense_grid : *mut *mut Node);
-    pub fn gen_dense_grid_custom(size : usize, center : Vector3<f32>, extent : f32, dense_grid : *mut *mut Node, f : extern fn(&(&Perlin,Square3<f32>), Vector3<f32>) -> f32, perlin : &(&Perlin,Square3<f32>));
+    pub fn gen_dense_grid_custom(size : usize, center : Vector3<f32>, extent : f32, dense_grid : *mut *mut Node, f : extern fn(&(&Perlin,Cube<f32>), Vector3<f32>) -> f32, perlin : &(&Perlin,Cube<f32>));
     pub fn simplify_grid_recursively(size : usize, center : Vector3<f32>, extent : f32, dense_grid : *mut *mut Node) -> *mut *mut Node;
     pub fn init_noise();
     pub fn print_octree(node : *mut Node, lev : usize);
@@ -92,7 +92,7 @@ pub unsafe fn test_cubic_octree(render : &mut RendererVertFragDef){
     let perlin = Perlin::new();
 
 
-    extern fn f(d : &(&Perlin,Square3<f32>), x : Vector3<f32>) -> f32{
+    extern fn f(d : &(&Perlin,Cube<f32>), x : Vector3<f32>) -> f32{
         let perlin = d.0;
         let cube = d.1;
         //octave_perlin3(&perlin, v.x, v.y, v.z, 8, 0.7)
@@ -107,15 +107,15 @@ pub unsafe fn test_cubic_octree(render : &mut RendererVertFragDef){
     }
 
     alloc_grid(size, &mut dense_grid);
-    gen_dense_grid_custom(size, center, extent, dense_grid, f, &(&perlin,Square3{center,extent}));
+    gen_dense_grid_custom(size, center, extent, dense_grid, f, &(&perlin,Cube{center,extent}));
     let simplified = simplify_grid_recursively(size, center, extent, dense_grid);
     //print_octree(*simplified, 0);
 
 
     for_each_leaf(*simplified, &mut Box::new( |node : *mut Node, center, ext, lev|{
             if (*node).density.abs() <= 0.5{
-                //add_square3_bounds_color(render, Square3{center, extent : ext}, Vector3::new(1.0,1.0,1.0));
-                add_cube_color_normal(render, Square3{center, extent : ext}, Vector3::new(0.6, 0.4, 0.4));
+                //add_square3_bounds_color(render, Cube{center, extent : ext}, Vector3::new(1.0,1.0,1.0));
+                add_cube_color_normal(render, Cube{center, extent : ext}, Vector3::new(0.6, 0.4, 0.4));
             }
 
         }), center, extent, 0);

@@ -800,8 +800,8 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                             let ru = load_cell_cached(&mut grid, x+1,y+1,z, &mut cache).get(&3).unwrap().clone();
                             let u = load_cell_cached(&mut grid, x,y+1,z, &mut cache).get(&1).unwrap().clone();
                             let normal = &grid.get(x,y,z).hermite_data.get(&5).unwrap().normal;
-                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : r, p3 : ru}, &Vector3::new(1.0, 1.0, 0.0), normal);
-                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : ru, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : r, p3 : ru}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : ru, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
                         },
                         6 => {
                             let f = load_cell_cached(&mut grid, x,y,z+1, &mut cache).get(&4).unwrap().clone();
@@ -811,8 +811,8 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                             let fu = fu_.get(&0).unwrap().clone();
                             let u = load_cell_cached(&mut grid, x,y+1,z, &mut cache).get(&2).unwrap().clone();
                             let normal = &grid.get(x,y,z).hermite_data.get(&6).unwrap().normal;
-                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : fu}, &Vector3::new(1.0, 1.0, 0.0), normal);
-                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : fu, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : fu}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : fu, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
                         },
                         10 => {
                             let r_ = load_cell_cached(&mut grid, x+1,y,z, &mut cache);
@@ -825,8 +825,8 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
                             let normal = &grid.get(x,y,z).hermite_data.get(&10).unwrap().normal;
 
-                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : rf, p3 : r}, &Vector3::new(1.0, 1.0, 0.0), normal);
-                            add_triangle_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : rf}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : rf, p3 : r}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : rf}, &Vector3::new(1.0, 1.0, 0.0), normal);
                         },
                         _ => ()
                     }

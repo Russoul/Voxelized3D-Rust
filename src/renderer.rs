@@ -2,8 +2,53 @@
 use std::vec::*;
 use graphics::*;
 use math::*;
+use std::sync::mpsc::Receiver;
+use std::collections::HashMap;
+use std::fs;
+use graphics_util::create_program_vf;
+use std::io::Read;
 
 use na::{Vector3};
+
+use glfw::{Action, Context, Key, Glfw, WindowHint};
+use time::precise_time_ns;
+
+fn load_shaders_vf() -> HashMap<String, Program>{
+    let dir : &str = "./assets/shaders/";
+    let paths = fs::read_dir(dir).unwrap();
+    let mut map : HashMap<String, Program> = HashMap::new();
+
+    for entry in paths{
+        let name : String = String::from(entry
+            .unwrap()
+            .path()
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap());
+
+        if !map.contains_key(&name){
+            let mut file_vert = fs::File::open(
+                dir.to_string() + &name + ".vert").unwrap();
+            let mut source_vert = String::new();
+            file_vert.read_to_string(&mut source_vert).unwrap();
+
+            let mut file_frag = fs::File::open(
+                dir.to_string() + &name + ".frag").unwrap();
+            let mut source_frag = String::new();
+            file_frag.read_to_string(&mut source_frag).unwrap();
+
+            let prog = create_program_vf(
+                &source_vert,
+                &source_frag);
+
+
+            map.insert(name, Program{id: prog});
+        }
+    }
+
+    map
+}
 
 pub trait RendererVertFrag{
     fn render_mode       (&self) -> usize;
@@ -30,31 +75,190 @@ pub struct RendererVertFragDef{
 
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Cam{
+    pub pos : Vector3<f32>,
+    pub look : Vector3<f32>,
+    pub up : Vector3<f32>,
+}
 
-pub const VERTEX_SIZE_COLOR : usize = 6;
-pub const VERTEX_SIZE_COLOR_NORMAL : usize = 9;
+pub struct Renderer{
+    pub render_triangles_pos_color : RendererVertFragDef,
+    pub render_lines_pos_color : RendererVertFragDef,
+    pub render_triangles_lighting_pos_color_normal : RendererVertFragDef,
+    pub glfw : Option<glfw::Glfw>,
+    pub window : Option<glfw::Window>,
+    pub events : Option<Receiver<(f64, glfw::WindowEvent)>>,
+    pub frame_buffer_size_callback : Option<Box<Fn(i32, i32)>>,
+    pub shaders : HashMap<String, Program>,
+    pub camera : Cam,
+    last_frame_nt : u64
+}
 
-pub fn set_attrib_ptrs_color(_:&mut RendererVertFragDef){
-    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR * 4,
+impl Renderer{
+
+    pub fn new(camera : Cam) -> Renderer{
+        Renderer{render_triangles_pos_color : RendererVertFragDef::make(VERTEX_SIZE_POS_COLOR, set_attrib_ptrs_pos_color, GL_TRIANGLES, "color"),
+                 render_lines_pos_color : RendererVertFragDef::make(VERTEX_SIZE_POS_COLOR, set_attrib_ptrs_pos_color, GL_LINES, "color"),
+                 render_triangles_lighting_pos_color_normal : RendererVertFragDef::make(VERTEX_SIZE_POS_COLOR_NORMAL, set_attrib_ptrs_pos_color_normal, GL_TRIANGLES, "lighting"),
+                 glfw : None, window : None, events : None, frame_buffer_size_callback : None,
+                 shaders : HashMap::new(), camera, last_frame_nt : 0}
+    }
+
+    pub fn get_window(&mut self) -> &mut glfw::Window{
+        self.window.as_mut().unwrap()
+    }
+    pub fn get_glfw(&mut self) -> &mut glfw::Glfw{
+        self.glfw.as_mut().unwrap()
+    }
+    pub fn get_events(&self) -> &Receiver<(f64, glfw::WindowEvent)>{
+        self.events.as_ref().unwrap()
+    }
+    pub fn get_camera(&mut self) -> &mut Cam{
+        &mut self.camera
+    }
+    pub fn get_shaders(&mut self) -> &mut HashMap<String, Program>{
+        &mut self.shaders
+    }
+
+    pub fn init(&mut self, start_width : u32, start_height : u32, title : &str){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
+        glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+        if cfg!(target_os = "macos") {
+            glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+        }
+        // Create a windowed mode window and its OpenGL context
+        let (mut window, events) = glfw.create_window(start_width, start_height, title, glfw::WindowMode::Windowed)
+            .expect("Failed to create GLFW window.");
+
+
+        // Make the window's context current
+        window.make_current();
+        glad_load_gl_loader();
+        window.set_key_polling(true);
+        window.set_framebuffer_size_polling(true);
+
+        self.window = Some(window);
+        self.glfw = Some(glfw);
+        self.events = Some(events);
+
+        self.shaders = load_shaders_vf();
+    }
+
+    pub fn set_framebuffer_size_callback<F : Fn(i32, i32) >(&mut self, callback : F) where F : 'static{
+        self.frame_buffer_size_callback = Some(Box::new(callback));
+    }
+
+    pub fn run<F : Fn(&mut Renderer, u64)>(&mut self, pre_render : F) where F : 'static{
+        let red = Vector3::new(1.0, 0.0, 0.0);
+        let green = Vector3::new(0.0, 1.0, 0.0);
+        let blue = Vector3::new(0.0, 0.0, 1.0);
+        let white = Vector3::new(1.0, 1.0, 1.0);
+
+        self.last_frame_nt = precise_time_ns();
+
+        // Loop until the user closes the window
+        while !self.get_window().should_close() {
+            let t_ns = precise_time_ns();
+            let dt_ns = t_ns - self.last_frame_nt;
+
+            pre_render(self, dt_ns);
+
+            let(win_w, win_h) = self.get_window().get_framebuffer_size();
+            let aspect =win_w as f32 / win_h as f32;
+
+            let persp = perspective(90.0, aspect, 0.1, 16.0);
+            let view = view_dir(self.camera.pos, self.camera.look, self.camera.up);
+
+            let shaderColor = self.get_shaders().get("color").unwrap();
+            shaderColor.enable();
+
+
+            shaderColor.set_float4x4("P", false, persp.as_slice());
+            shaderColor.set_float4x4("V", false, view.as_slice());
+
+            if !self.render_lines_pos_color.constructed{
+                self.render_lines_pos_color.construct();
+            }
+
+            self.render_lines_pos_color.draw();
+
+            if !self.render_triangles_pos_color.constructed{
+                self.render_triangles_pos_color.construct();
+            }
+
+            self.render_triangles_pos_color.draw();
+
+            let shaderLighting = self.get_shaders().get("lighting").unwrap();
+            shaderLighting.enable();
+
+
+            shaderLighting.set_float4x4("P", false, persp.as_slice());
+            shaderLighting.set_float4x4("V", false, view.as_slice());
+
+            shaderLighting.set_vec3f("pointLight.pos" ,Vector3::new(0.0, 8.0,0.0));
+            shaderLighting.set_vec3f("pointLight.color" ,(red + green + blue) * 15.0);
+
+            if !self.render_triangles_lighting_pos_color_normal.constructed{
+                self.render_triangles_lighting_pos_color_normal.construct();
+            }
+
+            self.render_triangles_lighting_pos_color_normal.draw();
+
+
+            // Swap front and back buffers
+            self.get_window().swap_buffers();
+
+            // Poll for and process events
+            self.get_glfw().poll_events();
+            let window = self.window.as_mut().unwrap();
+            for (_, event) in glfw::flush_messages(self.events.as_ref().unwrap()) {
+                //println!("{:?}", event);
+                match event {
+                    glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                        window.set_should_close(true)
+                    },
+                    glfw::WindowEvent::FramebufferSize(w, h) => {
+                        self.frame_buffer_size_callback.iter().for_each(|f| f(w, h));
+                    }
+                    _ => {},
+                }
+            }
+
+            self.last_frame_nt = t_ns;
+        }
+    }
+
+}
+
+
+pub const VERTEX_SIZE_POS_COLOR: usize = 6;
+pub const VERTEX_SIZE_POS_COLOR_NORMAL: usize = 9;
+
+pub fn set_attrib_ptrs_pos_color(_:&mut RendererVertFragDef){
+    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR * 4,
                              0);
     gl_enable_vertex_attrib_array(0);
 
-    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR * 4,
+    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
 
 }
 
-pub fn set_attrib_ptrs_color_normal(_:&mut RendererVertFragDef){
-    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR_NORMAL * 4,
+pub fn set_attrib_ptrs_pos_color_normal(_:&mut RendererVertFragDef){
+    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
                              0);
     gl_enable_vertex_attrib_array(0);
 
-    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR_NORMAL * 4,
+    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
 
-    gl_vertex_attrib_pointer(2, 3, GL_FLOAT, false, VERTEX_SIZE_COLOR_NORMAL * 4,
+    gl_vertex_attrib_pointer(2, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
                              6 * 4);
     gl_enable_vertex_attrib_array(2);
 
@@ -139,7 +343,7 @@ impl RendererVertFragDef{
     pub fn make(vs: usize,
             set_attrib_ptrs : fn (&mut RendererVertFragDef),
             render_mode: usize,
-            shader_name: String) -> RendererVertFragDef{
+            shader_name: &str) -> RendererVertFragDef{
         RendererVertFragDef{
             vertex_size: vs,
             vertex_pool: Vec::new(),
@@ -150,7 +354,7 @@ impl RendererVertFragDef{
             ebo: 0,
             constructed:false,
             render_mode,
-            shader_name,
+            shader_name : String::from(shader_name.clone()),
             set_attrib_ptrs
         }
     }
@@ -190,7 +394,7 @@ pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, co
 }
 
 
-pub fn add_triangle_color_normal(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: &Vector3<f32>, normal : &Vector3<f32>){
+pub fn add_triangle_pos_color_normal(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: &Vector3<f32>, normal : &Vector3<f32>){
     dat.vertex_pool.push(tr.p1[0]);
     dat.vertex_pool.push(tr.p1[1]);
     dat.vertex_pool.push(tr.p1[2]);
@@ -295,23 +499,23 @@ pub fn add_cube_color_normal(dat : &mut RendererVertFragDef, cube : Cube<f32>, c
         corners[i] = centers()[i] * 2.0 * cube.extent + cube.center;
     }
 
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[7], p2 : corners[0], p3 : corners[3]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[7], p3 : corners[4]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[7], p2 : corners[0], p3 : corners[3]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[7], p3 : corners[4]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
 
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[6], p3 : corners[2]}, &color, &Vector3::new(1.0, 0.0, 0.0));
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[5], p3 : corners[6]}, &color, &Vector3::new(1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[6], p3 : corners[2]}, &color, &Vector3::new(1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[5], p3 : corners[6]}, &color, &Vector3::new(1.0, 0.0, 0.0));
 
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[4], p3 : corners[1]}, &color, &Vector3::new(0.0, 0.0, -1.0));
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[4], p3 : corners[5]}, &color, &Vector3::new(0.0, 0.0, -1.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[4], p3 : corners[1]}, &color, &Vector3::new(0.0, 0.0, -1.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[4], p3 : corners[5]}, &color, &Vector3::new(0.0, 0.0, -1.0));
 
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[7], p3 : corners[3]}, &color, &Vector3::new(0.0, 0.0, 1.0));
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[6], p3 : corners[7]}, &color, &Vector3::new(0.0, 0.0, 1.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[7], p3 : corners[3]}, &color, &Vector3::new(0.0, 0.0, 1.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[6], p3 : corners[7]}, &color, &Vector3::new(0.0, 0.0, 1.0));
 
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[2], p3 : corners[3]}, &color, &Vector3::new(0.0, -1.0, 0.0));
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[0], p3 : corners[1]}, &color, &Vector3::new(0.0, -1.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[2], p3 : corners[3]}, &color, &Vector3::new(0.0, -1.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[0], p3 : corners[1]}, &color, &Vector3::new(0.0, -1.0, 0.0));
 
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[4], p3 : corners[7]}, &color, &Vector3::new(0.0, 1.0, 0.0));
-    add_triangle_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[5], p3 : corners[4]}, &color, &Vector3::new(0.0, 1.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[4], p3 : corners[7]}, &color, &Vector3::new(0.0, 1.0, 0.0));
+    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[5], p3 : corners[4]}, &color, &Vector3::new(0.0, 1.0, 0.0));
 }
 
 pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n : usize, m : usize, color : Vector3<f32>){
@@ -383,7 +587,7 @@ pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n
 
 }
 
-pub fn add_grid3_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, tangent : Vector3<f32>, normal : Vector3<f32>, extent : f32, subdiv_num : u32, color : Vector3<f32>){
+pub fn add_grid3_pos_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, tangent : Vector3<f32>, normal : Vector3<f32>, extent : f32, subdiv_num : u32, color : Vector3<f32>){
     let right = tangent.cross(&normal) * extent;
     let along = tangent * extent;
     add_vector_to_pool(dat, center - right - along);
