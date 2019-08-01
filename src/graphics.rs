@@ -10,7 +10,7 @@ use std::ffi::CStr;
 use std::ptr;
 use std::str;
 use std;
-use na;
+use matrix::{Vec3};
 
 pub struct WindowInfo{
     pub width: usize,
@@ -76,7 +76,7 @@ impl Program{
         gl_uniform3f(self.get_uniform(name), val1, val2, val3);
     }
 
-    pub fn set_vec3f(&self, name: &str, vec : na::Vector3<f32>){
+    pub fn set_vec3f(&self, name: &str, vec : Vec3<f32>){
         self.enable();
         gl_uniform3f(self.get_uniform(name), vec.x, vec.y, vec.z);
     }

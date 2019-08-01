@@ -1,5 +1,5 @@
 
-use std::vec::*;
+use std::vec::{Vec as Vector};
 use graphics::*;
 use math::*;
 use std::sync::mpsc::Receiver;
@@ -8,7 +8,7 @@ use std::fs;
 use graphics_util::create_program_vf;
 use std::io::Read;
 
-use na::{Vector3};
+use matrix::*;
 
 use glfw::{Action, Context, Key, Glfw, WindowHint};
 use time::precise_time_ns;
@@ -62,8 +62,8 @@ pub trait RendererVertFrag{
 
 pub struct RendererVertFragDef{
     pub vertex_size: usize,
-    pub vertex_pool: Vec<f32>,
-    pub index_pool: Vec<u32>,
+    pub vertex_pool: Vector<f32>,
+    pub index_pool: Vector<u32>,
     pub vertex_count: u32,
     pub vbo: usize,
     pub vao: usize,
@@ -77,9 +77,9 @@ pub struct RendererVertFragDef{
 
 #[derive(Debug, Clone, Copy)]
 pub struct Cam{
-    pub pos : Vector3<f32>,
-    pub look : Vector3<f32>,
-    pub up : Vector3<f32>,
+    pub pos : Vec3<f32>,
+    pub look : Vec3<f32>,
+    pub up : Vec3<f32>,
 }
 
 pub struct Renderer{
@@ -153,10 +153,10 @@ impl Renderer{
     }
 
     pub fn run<F : Fn(&mut Renderer, u64)>(&mut self, pre_render : F) where F : 'static{
-        let red = Vector3::new(1.0, 0.0, 0.0);
-        let green = Vector3::new(0.0, 1.0, 0.0);
-        let blue = Vector3::new(0.0, 0.0, 1.0);
-        let white = Vector3::new(1.0, 1.0, 1.0);
+        let red = Vec3::new(1.0, 0.0, 0.0);
+        let green = Vec3::new(0.0, 1.0, 0.0);
+        let blue = Vec3::new(0.0, 0.0, 1.0);
+        let white = Vec3::new(1.0, 1.0, 1.0);
 
         self.last_frame_nt = precise_time_ns();
 
@@ -199,7 +199,7 @@ impl Renderer{
             shaderLighting.set_float4x4("P", false, persp.as_slice());
             shaderLighting.set_float4x4("V", false, view.as_slice());
 
-            shaderLighting.set_vec3f("pointLight.pos" ,Vector3::new(0.0, 8.0,0.0));
+            shaderLighting.set_vec3f("pointLight.pos" ,Vec3::new(0.0, 8.0,0.0));
             shaderLighting.set_vec3f("pointLight.color" ,(red + green + blue) * 15.0);
 
             if !self.render_triangles_lighting_pos_color_normal.constructed{
@@ -346,8 +346,8 @@ impl RendererVertFragDef{
             shader_name: &str) -> RendererVertFragDef{
         RendererVertFragDef{
             vertex_size: vs,
-            vertex_pool: Vec::new(),
-            index_pool: Vec::new(),
+            vertex_pool: Vector::new(),
+            index_pool: Vector::new(),
             vertex_count: 0,
             vbo: 0,
             vao: 0,
@@ -360,7 +360,7 @@ impl RendererVertFragDef{
     }
 }
 
-pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: Vector3<f32>){
+pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: Triangle3<f32>, color: Vec3<f32>){
     dat.vertex_pool.push(tr.p1[0]);
     dat.vertex_pool.push(tr.p1[1]);
     dat.vertex_pool.push(tr.p1[2]);
@@ -394,7 +394,7 @@ pub fn add_triangle_color(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, co
 }
 
 
-pub fn add_triangle_pos_color_normal(dat: &mut RendererVertFragDef, tr: &Triangle3<f32>, color: &Vector3<f32>, normal : &Vector3<f32>){
+pub fn add_triangle_pos_color_normal(dat: &mut RendererVertFragDef, tr: Triangle3<f32>, color: Vec3<f32>, normal : Vec3<f32>){
     dat.vertex_pool.push(tr.p1[0]);
     dat.vertex_pool.push(tr.p1[1]);
     dat.vertex_pool.push(tr.p1[2]);
@@ -439,11 +439,13 @@ pub fn add_triangle_pos_color_normal(dat: &mut RendererVertFragDef, tr: &Triangl
     dat.vertex_count += 3;
 }
 
-fn add_vector_to_pool(dat : &mut RendererVertFragDef, vec : Vector3<f32>){
-    for i in vec.iter(){dat.vertex_pool.push(i.clone());}
+fn add_vector_to_pool(dat : &mut RendererVertFragDef, vec : Vec3<f32>){
+    dat.vertex_pool.push(vec.x);
+    dat.vertex_pool.push(vec.y);
+    dat.vertex_pool.push(vec.z);
 }
 
-pub fn add_line3_color(dat : &mut RendererVertFragDef, line : Line3<f32>, color : Vector3<f32>){
+pub fn add_line3_color(dat : &mut RendererVertFragDef, line : Line3<f32>, color : Vec3<f32>){
     add_vector_to_pool(dat, line.start);
     add_vector_to_pool(dat, color);
     add_vector_to_pool(dat, line.end);
@@ -455,22 +457,22 @@ pub fn add_line3_color(dat : &mut RendererVertFragDef, line : Line3<f32>, color 
     dat.vertex_count += 2;
 }
 
-pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Cube<f32>, color : Vector3<f32>){
-    add_vector_to_pool(dat, Vector3::new(cube.center.x - cube.extent, cube.center.y - cube.extent, cube.center.z - cube.extent));
+pub fn add_cube_bounds_pos_color(dat : &mut RendererVertFragDef, cube : Cube<f32>, color : Vec3<f32>){
+    add_vector_to_pool(dat, Vec3::new(cube.center.x - cube.extent, cube.center.y - cube.extent, cube.center.z - cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x + cube.extent, cube.center.y - cube.extent, cube.center.z - cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x + cube.extent, cube.center.y - cube.extent, cube.center.z - cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x + cube.extent, cube.center.y + cube.extent, cube.center.z - cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x + cube.extent, cube.center.y + cube.extent, cube.center.z - cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x - cube.extent, cube.center.y + cube.extent, cube.center.z - cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x - cube.extent, cube.center.y + cube.extent, cube.center.z - cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x - cube.extent, cube.center.y - cube.extent, cube.center.z + cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x - cube.extent, cube.center.y - cube.extent, cube.center.z + cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x + cube.extent, cube.center.y - cube.extent, cube.center.z + cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x + cube.extent, cube.center.y - cube.extent, cube.center.z + cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x + cube.extent, cube.center.y + cube.extent, cube.center.z + cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x + cube.extent, cube.center.y + cube.extent, cube.center.z + cube.extent));
     add_vector_to_pool(dat, color);
-    add_vector_to_pool(dat, Vector3::new(cube.center.x - cube.extent, cube.center.y + cube.extent, cube.center.z + cube.extent));
+    add_vector_to_pool(dat, Vec3::new(cube.center.x - cube.extent, cube.center.y + cube.extent, cube.center.z + cube.extent));
     add_vector_to_pool(dat, color);
 
     let indices : [u32;24] = [0,1,1,2,2,3,3,0, 4,5,5,6,6,7,7,4, 0,4, 1,5, 2,6, 3,7];
@@ -480,45 +482,45 @@ pub fn add_square3_bounds_color(dat : &mut RendererVertFragDef, cube : Cube<f32>
 
 
 //for cubes
-fn centers() -> [Vector3<f32>;8]{
-    [Vector3::new(-0.5, -0.5, -0.5),
-     Vector3::new(0.5, -0.5, -0.5),
-     Vector3::new(0.5, -0.5, 0.5),
-     Vector3::new(-0.5, -0.5, 0.5),
+fn centers() -> [Vec3<f32>;8]{
+    [Vec3::new(-0.5, -0.5, -0.5),
+     Vec3::new(0.5, -0.5, -0.5),
+     Vec3::new(0.5, -0.5, 0.5),
+     Vec3::new(-0.5, -0.5, 0.5),
 
-     Vector3::new(-0.5, 0.5, -0.5),
-     Vector3::new(0.5, 0.5, -0.5),
-     Vector3::new(0.5, 0.5, 0.5),
-     Vector3::new(-0.5, 0.5, 0.5)]
+     Vec3::new(-0.5, 0.5, -0.5),
+     Vec3::new(0.5, 0.5, -0.5),
+     Vec3::new(0.5, 0.5, 0.5),
+     Vec3::new(-0.5, 0.5, 0.5)]
 }
 
-pub fn add_cube_color_normal(dat : &mut RendererVertFragDef, cube : Cube<f32>, color : Vector3<f32>){
-    let mut corners = [Vector3::zeros();8];
+pub fn add_cube_color_normal(dat : &mut RendererVertFragDef, cube : Cube<f32>, color : Vec3<f32>){
+    let mut corners = [Vec3::empty();8];
 
     for i in 0..8{
         corners[i] = centers()[i] * 2.0 * cube.extent + cube.center;
     }
 
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[7], p2 : corners[0], p3 : corners[3]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[7], p3 : corners[4]}, &color, &Vector3::new(-1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[7], p2 : corners[0], p3 : corners[3]}, color, Vec3::new(-1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[0], p2 : corners[7], p3 : corners[4]}, color, Vec3::new(-1.0, 0.0, 0.0));
 
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[6], p3 : corners[2]}, &color, &Vector3::new(1.0, 0.0, 0.0));
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[5], p3 : corners[6]}, &color, &Vector3::new(1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[1], p2 : corners[6], p3 : corners[2]}, color, Vec3::new(1.0, 0.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[1], p2 : corners[5], p3 : corners[6]}, color, Vec3::new(1.0, 0.0, 0.0));
 
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[4], p3 : corners[1]}, &color, &Vector3::new(0.0, 0.0, -1.0));
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[1], p2 : corners[4], p3 : corners[5]}, &color, &Vector3::new(0.0, 0.0, -1.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[0], p2 : corners[4], p3 : corners[1]}, color, Vec3::new(0.0, 0.0, -1.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[1], p2 : corners[4], p3 : corners[5]}, color, Vec3::new(0.0, 0.0, -1.0));
 
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[7], p3 : corners[3]}, &color, &Vector3::new(0.0, 0.0, 1.0));
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[6], p3 : corners[7]}, &color, &Vector3::new(0.0, 0.0, 1.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[2], p2 : corners[7], p3 : corners[3]}, color, Vec3::new(0.0, 0.0, 1.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[2], p2 : corners[6], p3 : corners[7]}, color, Vec3::new(0.0, 0.0, 1.0));
 
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[0], p2 : corners[2], p3 : corners[3]}, &color, &Vector3::new(0.0, -1.0, 0.0));
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[2], p2 : corners[0], p3 : corners[1]}, &color, &Vector3::new(0.0, -1.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[0], p2 : corners[2], p3 : corners[3]}, color, Vec3::new(0.0, -1.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[2], p2 : corners[0], p3 : corners[1]}, color, Vec3::new(0.0, -1.0, 0.0));
 
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[4], p3 : corners[7]}, &color, &Vector3::new(0.0, 1.0, 0.0));
-    add_triangle_pos_color_normal(dat, &Triangle3{p1 : corners[6], p2 : corners[5], p3 : corners[4]}, &color, &Vector3::new(0.0, 1.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[6], p2 : corners[4], p3 : corners[7]}, color, Vec3::new(0.0, 1.0, 0.0));
+    add_triangle_pos_color_normal(dat, Triangle3{p1 : corners[6], p2 : corners[5], p3 : corners[4]}, color, Vec3::new(0.0, 1.0, 0.0));
 }
 
-pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n : usize, m : usize, color : Vector3<f32>){
+pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : Sphere<f32>, n : usize, m : usize, color : Vec3<f32>){
     use std;
     let pi = std::f32::consts::PI;
     let dphi = 2.0 * pi / n as f32;
@@ -547,12 +549,12 @@ pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n
             let z3 = -phi_next.sin() * psi_next.sin() * sphere.rad;
             let y3 = -psi_next.cos() * sphere.rad;
 
-            let v0 = Vector3::new(x0, y0, z0);
-            let v1 = Vector3::new(x1, y1, z1);
-            let v2 = Vector3::new(x2, y2, z2);
-            let v3 = Vector3::new(x3, y3, z3);
+            let v0 = Vec3::new(x0, y0, z0);
+            let v1 = Vec3::new(x1, y1, z1);
+            let v2 = Vec3::new(x2, y2, z2);
+            let v3 = Vec3::new(x3, y3, z3);
 
-            let normal = (v1 - v0).cross(&(v2 - v0)).normalize();
+            let normal = (v1 - v0).cross(v2 - v0).normalize();
 
              add_vector_to_pool(dat, sphere.center + v0);
              add_vector_to_pool(dat, color);
@@ -587,8 +589,8 @@ pub fn add_sphere_color(dat : &mut RendererVertFragDef, sphere : &Sphere<f32>, n
 
 }
 
-pub fn add_grid3_pos_color(dat : &mut RendererVertFragDef, center : Vector3<f32>, tangent : Vector3<f32>, normal : Vector3<f32>, extent : f32, subdiv_num : u32, color : Vector3<f32>){
-    let right = tangent.cross(&normal) * extent;
+pub fn add_grid3_pos_color(dat : &mut RendererVertFragDef, center : Vec3<f32>, tangent : Vec3<f32>, normal : Vec3<f32>, extent : f32, subdiv_num : u32, color : Vec3<f32>){
+    let right = tangent.cross(normal) * extent;
     let along = tangent * extent;
     add_vector_to_pool(dat, center - right - along);
     add_vector_to_pool(dat, color);

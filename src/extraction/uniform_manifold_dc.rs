@@ -512,15 +512,24 @@ fn solve_qef_analically_ATA_ATb(planes : &Vec<Plane<f32>>) -> Option<Vector3<f32
     }
 }
 
-fn solve_qef_analically_qr(planes : &Vec<Plane<f32>>, bounds : &Cube<f32>) -> Vector3<f32>{
-    let mut masspoint = Vector4::zeros();
-    let normals : Vec<f32> = planes.iter().flat_map(|x| {
-        masspoint += Vector4::new(x.point.x, x.point.y, x.point.z, 1.0);
-        x.normal.as_slice().to_owned()
+fn con(v : Vector3<f32>) -> Vector3<f64>{
+    Vector3::new(v.x as f64, v.y as f64, v.z as f64)
+}
+
+fn con_back(v : Vector3<f64>) -> Vector3<f32>{
+    Vector3::new(v.x as f32, v.y as f32, v.z as f32)
+}
+
+fn solve_qef_analytically_qr(planes : &Vec<Plane<f32>>, bounds : Cube<f32>) -> Vector3<f32>{
+    let mut mass_point = Vector3::zeros();
+    let normals : Vec<f64> = planes.iter().flat_map(|x| {
+        mass_point += con(x.point - bounds.center);
+        vec![x.normal.x as f64, x.normal.y as f64, x.normal.z as f64]
     }).collect();
+    mass_point = mass_point / 2.0 + con(bounds.center);
     let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
     //let intersections : Vec<f32> = planes.iter().flat_map(|x| x.point.as_slice().to_owned()).collect();
-    let product : Vec<f32> = planes.iter().map(|x| x.normal.dot(&x.point)).collect();
+    let product : Vec<f64> = planes.iter().map(|x| con(x.normal).dot(&(con(x.point) - mass_point))).collect();
     for i in 0..product.len(){
         Abs.push(normals[3 * i]);
         Abs.push(normals[3 * i + 1]);
@@ -550,17 +559,16 @@ fn solve_qef_analically_qr(planes : &Vec<Plane<f32>>, bounds : &Cube<f32>) -> Ve
     let try = qr2.solve(&Vector3::new(b1[0], b1[1], b1[2]));
     let solution = 
         match try{
-            Some(min) => {
-                if point3_inside_sphere_inclusive(&min, Sphere{center : bounds.center, rad : 3.0.sqrt() * bounds.extent * 2.0}){
-                    min
+            Some(minimizer) => {
+                //con_back(minimizer + mass_point)
+                if(point3_inside_cube_inclusive(con_back(minimizer + mass_point), bounds )){
+                    con_back(minimizer + mass_point)
                 }else{
-                    let temp = (masspoint / masspoint.w);
-                    Vector3::new(temp.x, temp.y, temp.z)
+                    con_back(mass_point)
                 }
             },
             None => {
-                let temp = (masspoint / masspoint.w);
-                Vector3::new(temp.x, temp.y, temp.z)
+                con_back(mass_point)
             }
     };
 
@@ -654,11 +662,15 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
         let mut cached_cell = HashMap::new();
 
-        if vertices.len() >= 1 { //render cells that contain more than 1 vertex
-            //add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(1.0,0.0,0.0));
+        if vertices.len() == 1 { //render cells that contain more than 1 vertex
+            add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vector3::new(0.0, 1.0, 0.0));
+        }
+        if vertices.len() > 1 { //render cells that contain more than 1 vertex
+            add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vector3::new(1.0, 0.0, 0.0));
         }
 
         for vertex in vertices{
+
 
             let mut cur_planes = Vec::with_capacity(vertex.len());
 
@@ -674,7 +686,8 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                 let intersection = sample_surface_intersection(&edge, accuracy, f);
                 
                 let normal = sample_normal(&intersection, 1e-5, f);
-                
+
+                add_cube_bounds_pos_color(render_debug_lines, Cube{center : intersection, extent : bounds.extent / 16.0}, Vector3::new(1.0, 1.0, 1.0));
 
                 let plane = Plane{point : intersection, normal};
                 hermite_data.insert(edge_id.clone(), plane);
@@ -722,7 +735,9 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
             //     println!("sampled");
             //     sample_qef_brute(&bounds, 32, &cur_planes)
             // };
-            let minimizer = solve_qef_analically_qr(&cur_planes, &bounds);
+            let minimizer = solve_qef_analytically_qr(&cur_planes, bounds);
+
+            add_cube_bounds_pos_color(render_debug_lines, Cube{center : minimizer, extent : bounds.extent / 16.0}, Vector3::new(1.0, 1.0, 0.0));
 
             // if !is_valid_qef_estimation(&minimizer){
             //     println!("bad minimizer {}, det {}, err {}", &minimizer, try.1, calc_qef(&minimizer, &cur_planes));

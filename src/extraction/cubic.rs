@@ -96,7 +96,7 @@ pub unsafe fn test_cubic_octree(render : &mut RendererVertFragDef){
         let perlin = d.0;
         let cube = d.1;
         //octave_perlin3(&perlin, v.x, v.y, v.z, 8, 0.7)
-        if point3_inside_square3_inclusive(&x, &cube){
+        if point3_inside_cube_inclusive(x, cube){
             let den = -octave_perlin3(perlin, x.x - (cube.center.x - cube.extent), x.y - (cube.center.y - cube.extent), x.z - (cube.center.z - cube.extent), 4, 0.56) * 2.0 * cube.extent;
             let dy = (x.y - (cube.center.y - cube.extent) ); //cube.extent / 2.0 ; // 0 - 1
             //println!("{} {} {}", den, dy, x.y);

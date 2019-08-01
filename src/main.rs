@@ -1,7 +1,6 @@
 //#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
 
 extern crate generic_array;
-extern crate nalgebra as na;
 extern crate typenum;
 extern crate alga;
 extern crate libc;
@@ -12,27 +11,29 @@ extern crate noise;
 extern crate num;
 extern crate glfw;
 
-use na::*;
-use na::core::Unit;
+
+//mod qef_bindings;
+
 use libc::*;
 use std::ffi::*;
 
 mod test;
-mod qef_bindings;
 mod graphics;
 mod graphics_util;
 mod renderer;
 mod util;
 #[macro_use]
 mod math;
-mod extraction;
-mod matrix;
-//mod cubic;
 
-use extraction::dcm;
+mod matrix;
+
+
+//mod extraction;
+/*use extraction::dcm;
 use extraction::cubic;
 use extraction::uniform_manifold_dc;
 use extraction::dc;
+use extraction::uniform_manifold_dc::*;*/
 
 use noise::{Perlin};
 use graphics::*;
@@ -47,10 +48,8 @@ use math::*;
 use std::ops::*;
 use rand::distributions::{Sample, Range};
 use typenum::{Cube as _, Prod, Unsigned};
-use core::storage::*;
 use generic_array::*;
-use extraction::uniform_manifold_dc::*;
-
+use matrix::*;
 
 
 fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, camera : &mut Cam){
@@ -78,13 +77,13 @@ fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, ca
     }
 
     if win.get_key(glfw::Key::A) == glfw::Action::Press{
-        let right = camera.look.cross(&camera.up);
+        let right = camera.look.cross(camera.up);
 
         camera.pos -= right * dt_s as f32;
     }
 
     if win.get_key(glfw::Key::D) == glfw::Action::Press{
-        let right = camera.look.cross(&camera.up);
+        let right = camera.look.cross(camera.up);
 
         camera.pos += right * dt_s as f32;
     }
@@ -101,33 +100,33 @@ fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, ca
 
     if win.get_key(glfw::Key::Left) == glfw::Action::Press{
 
-        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.up), std::f32::consts::PI * dt_s / 2.0);
+        let mat = rot_mat3(camera.up, std::f32::consts::PI * dt_s / 2.0);
         camera.look = (mat * camera.look).normalize();
     }
     if win.get_key(glfw::Key::Right) == glfw::Action::Press{
 
-        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.up), -std::f32::consts::PI * dt_s / 2.0);
+        let mat = rot_mat3(camera.up, -std::f32::consts::PI * dt_s / 2.0);
         camera.look = (mat * camera.look).normalize();
     }
     if win.get_key(glfw::Key::Kp0) == glfw::Action::Press{
 
-        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.look), std::f32::consts::PI * dt_s / 2.0);
+        let mat = rot_mat3(camera.look, std::f32::consts::PI * dt_s / 2.0);
         camera.up = (mat * camera.up).normalize();
     }
     if win.get_key(glfw::Key::KpDecimal) == glfw::Action::Press{
 
-        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(camera.look), -std::f32::consts::PI * dt_s / 2.0);
+        let mat = rot_mat3(camera.look, -std::f32::consts::PI * dt_s / 2.0);
         camera.up = (mat * camera.up).normalize();
     }
     if win.get_key(glfw::Key::Up) == glfw::Action::Press{
-        let right = camera.look.cross(&camera.up);
-        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(right), std::f32::consts::PI * dt_s / 2.0);
+        let right = camera.look.cross(camera.up);
+        let mat = rot_mat3(right, std::f32::consts::PI * dt_s / 2.0);
         camera.look = (mat * camera.look).normalize();
         camera.up = (mat * camera.up).normalize();
     }
     if win.get_key(glfw::Key::Down) == glfw::Action::Press{
-        let right = camera.look.cross(&camera.up);
-        let mat = na::Rotation3::from_axis_angle(&Unit::new_unchecked(right), -std::f32::consts::PI * dt_s / 2.0);
+        let right = camera.look.cross(camera.up);
+        let mat = rot_mat3(right, -std::f32::consts::PI * dt_s / 2.0);
         camera.look = (mat * camera.look).normalize();
         camera.up = (mat * camera.up).normalize();
     }
@@ -135,16 +134,16 @@ fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, ca
 }
 
 fn run(){
-    let zero = Vector3::new(0.0, 0.0, 0.0);
-    let offset = Vector3::new(0.1, 0.1, 0.1);
-    let red = Vector3::new(1.0, 0.0, 0.0);
-    let green = Vector3::new(0.0, 1.0, 0.0);
-    let blue = Vector3::new(0.0, 0.0, 1.0);
-    let white = Vector3::new(1.0, 1.0, 1.0);
+    let zero = Vec3::new(0.0, 0.0, 0.0);
+    let offset = Vec3::new(0.1, 0.1, 0.1);
+    let red = Vec3::new(1.0, 0.0, 0.0);
+    let green = Vec3::new(0.0, 1.0, 0.0);
+    let blue = Vec3::new(0.0, 0.0, 1.0);
+    let white = Vec3::new(1.0, 1.0, 1.0);
     let def_width: u32 = 800;
     let def_height: u32 = 600;
     let title = "Voxelized 3D";
-    let cam = renderer::Cam{look : Vector3::new(0.0, 0.0, -1.0), up : Vector3::new(0.0, 1.0, 0.0), pos : Vector3::new(0.0, 0.0, 0.0)};
+    let cam = renderer::Cam{look : Vec3::new(0.0, 0.0, -1.0), up : Vec3::new(0.0, 1.0, 0.0), pos : Vec3::new(0.0, 0.0, 0.0)};
     let mut renderer = Renderer::new(cam);
     renderer.init(def_width, def_height, title);
     renderer.set_framebuffer_size_callback(|w, h| println!("new dims {} {}", w, h));
@@ -154,39 +153,39 @@ fn run(){
 
 
     //UNIFORM MANIFOLD DC
-    let sp_num1 = mk_sphere(Sphere{center : Vector3::new(2.0, 2.0, -1.0), rad : 1.0});
-    let sp_num2 = mk_sphere(Sphere{center : Vector3::new(2.0, 2.0, 1.001), rad : 1.0});
-    let rec1 = mk_aabb(Vector3::new(2.0,2.0,0.0), Vector3::new(0.2,0.2,0.2));
+    let sp_num1 = mk_sphere(Sphere{center : Vec3::new(2.0, 2.0, -1.0), rad : 1.0});
+    let sp_num2 = mk_sphere(Sphere{center : Vec3::new(2.0, 2.0, 1.001), rad : 1.0});
+    let rec1 = mk_aabb(Vec3::new(2.0,2.0,0.0), Vec3::new(0.2,0.2,0.2));
     let den1 = union3(sp_num1, sp_num2);
     let den = union3(rec1, den1);
-    let torusz = mk_torus_z(2.0, 0.8,Vector3::new(0.0,0.0,-4.0));
-    let torusy = mk_torus_y(1.6, 0.67,Vector3::new(2.0,0.0,-4.0));
+    let torusz = mk_torus_z(2.0, 0.8,Vec3::new(0.0,0.0,-4.0));
+    let torusy = mk_torus_y(1.6, 0.67,Vec3::new(2.0,0.0,-4.0));
     let perlin = Perlin::new();
-    let noise = noise_f32(perlin, Cube{center : Vector3::new(1.0,-1.0,1.0), extent : 3.5} );//perlin.get([p.x,p.y,p.z])  ;
+    let noise = noise_f32(perlin, Cube{center : Vec3::new(1.0,-1.0,1.0), extent : 3.5} );//perlin.get([p.x,p.y,p.z])  ;
     let two_torus = union3(torusz, torusy);
-    let den2 = difference3(two_torus, mk_aabb(Vector3::new(0.0, 3.0, -4.0), Vector3::new(1.5,1.5,1.5)));
-    let den3 = union3(den2, mk_sphere(Sphere{center : Vector3::new(0.0, 2.0, -4.0), rad : 1.0}));
-    let den4 = union3(den3, mk_obb(Vector3::new(1.0, 1.0, 0.0), Vector3::new(1.0, -1.0, 0.0).normalize(), Vector3::new(1.0, 1.0, 0.5).normalize(), Vector3::new(1.0, 0.5, 0.2)));
-    //let den4 = union3(den3, mk_half_space_pos(Plane{point : Vector3::new(0.0, 2.0, -4.0), normal : Vector3::new(1.0, 1.0, 0.0).normalize()}));
+    let den2 = difference3(two_torus, mk_aabb(Vec3::new(0.0, 3.0, -4.0), Vec3::new(1.5,1.5,1.5)));
+    let den3 = union3(den2, mk_sphere(Sphere{center : Vec3::new(0.0, 2.0, -4.0), rad : 1.0}));
+    let den4 = union3(den3, mk_obb(Vec3::new(1.0, 1.0, 0.0), Vec3::new(1.0, -1.0, 0.0).normalize(), Vec3::new(1.0, 1.0, 0.5).normalize(), Vec3::new(1.0, 0.5, 0.2)));
+    //let den4 = union3(den3, mk_half_space_pos(Plane{point : Vec3::new(0.0, 2.0, -4.0), normal : Vec3::new(1.0, 1.0, 0.0).normalize()}));
     //let den = f;
     //TODO implement DenFn differently, like noise library
-    //construct_grid(&den4, Vector3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
+    //construct_grid(&den4, Vec3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
 
-    let test_sphere = Sphere{center : Vector3::new(2.7, 1.0, 0.0), rad : 2.4};
-    let test_sphere2 = Sphere{center : Vector3::new(2.7, 3.0, 0.0), rad : 2.4};
-    let test_sphere3 = Sphere{center : Vector3::new(2.7, 1.0, 2.7), rad : 1.4};
+    let test_sphere = Sphere{center : Vec3::new(2.7, 1.0, 0.0), rad : 2.4};
+    let test_sphere2 = Sphere{center : Vec3::new(2.7, 3.0, 0.0), rad : 2.4};
+    let test_sphere3 = Sphere{center : Vec3::new(2.7, 1.0, 2.7), rad : 1.4};
     let ts1 = mk_sphere(test_sphere);
     let ts2 = mk_sphere(test_sphere2);
     let ts22 = mk_sphere(test_sphere3);
     let ts3 = difference3(ts1, ts2);
     let ts4 = difference3(ts3, ts22);
-    //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vector3::new(1.0, 1.0, 1.0));
-    construct_grid(&ts4, Vector3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
-    //construct_grid(&den4, Vector3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
+    //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
+    //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
+    //construct_grid(&den4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
 
 
 
-    add_grid3_pos_color(&mut renderer.render_lines_pos_color, Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0), 1.0, 8, white);
+    add_grid3_pos_color(&mut renderer.render_lines_pos_color, Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
 
     renderer.run(|renderer, dt_ns| {
@@ -201,6 +200,7 @@ fn run(){
 
 fn main(){
 
-    run();
+    //run();
+    test_matrices();
 }
 

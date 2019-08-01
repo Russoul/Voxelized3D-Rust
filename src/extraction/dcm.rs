@@ -325,7 +325,7 @@ fn calc_feature(vg : &VoxelMaterialGrid3<f32>, x : usize, y : usize, z : usize,
             Some(sol) => Vector3::new(sol[0], sol[1], sol[2]),
             None => sample_qef_brute(vg.square3(x, y, z), accuracy, &planes),
         };
-        if !point3_inside_square3_inclusive(&feature_vertex, &vg.square3(x, y, z)){
+        if !point3_inside_cube_inclusive(feature_vertex, vg.square3(x, y, z)){
             // println!("bad val {} {} {}", x,y,z);
             // add_square3_bounds_color(debug_render, vg.square3(x, y, z), Vector3::new(1.0,1.0,1.0)); //cube
             // add_square3_bounds_color(debug_render, Square3{center : feature_vertex, extent : 0.006}, Vector3::new(0.0,1.0,1.0)); //feature
