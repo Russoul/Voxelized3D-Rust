@@ -24,16 +24,18 @@ mod renderer;
 mod util;
 #[macro_use]
 mod math;
-
+#[macro_use]
 mod matrix;
 
 
-//mod extraction;
+mod extraction;
 /*use extraction::dcm;
 use extraction::cubic;
-use extraction::uniform_manifold_dc;
 use extraction::dc;
-use extraction::uniform_manifold_dc::*;*/
+*/
+
+use extraction::uniform_manifold_dc;
+use extraction::uniform_manifold_dc::*;
 
 use noise::{Perlin};
 use graphics::*;
@@ -133,6 +135,7 @@ fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, ca
 
 }
 
+
 fn run(){
     let zero = Vec3::new(0.0, 0.0, 0.0);
     let offset = Vec3::new(0.1, 0.1, 0.1);
@@ -150,6 +153,7 @@ fn run(){
 
     let BLOCK_SIZE : f32 = 0.125;//2.0;
     let CHUNK_SIZE : usize = 128;//*2;
+
 
 
     //UNIFORM MANIFOLD DC
@@ -181,9 +185,10 @@ fn run(){
     let ts4 = difference3(ts3, ts22);
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
     //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
-    //construct_grid(&den4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
+    construct_grid(&den4, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
 
 
+    add_triangle_color(&mut renderer.render_triangles_pos_color, Triangle3{p1 : vec3![-0.2, 0.0, -1.0], p2 : vec3![0.2, 0.0, -1.0], p3 : vec3![0.0, 0.3, -1.0]}, red);
 
     add_grid3_pos_color(&mut renderer.render_lines_pos_color, Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
@@ -200,7 +205,6 @@ fn run(){
 
 fn main(){
 
-    //run();
-    test_matrices();
+    run();
 }
 

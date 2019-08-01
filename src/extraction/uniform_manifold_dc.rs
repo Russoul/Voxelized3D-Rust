@@ -1,12 +1,16 @@
 use std;
-use na::*;
 use math::*;
+use std::vec::{Vec as Vector};
 use renderer::*;
 use alga::general::*;
+use alga::general::SupersetOf;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use qef_bindings::*;
+use matrix::*;
+use typenum::{U1, U2, U3, U4, U5, U6};
+use std::process::exit;
+//use matrix::*;
 
 //uniform manifold dual contouring is a modification to dual marching cubes (hermite extension to dual marching cubes)
 
@@ -18,7 +22,7 @@ use qef_bindings::*;
 //https://vis.computer.org/vis2004/DVD/vis/papers/nielson2.pdf
 
 //256 x 16
-pub fn edge_table() -> Vec< Vec< isize > >{
+pub fn edge_table() -> Vector< Vector< isize > >{
     vec![
             vec![-2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
             vec![0, 8, 3, -2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],  
@@ -280,7 +284,7 @@ pub fn edge_table() -> Vec< Vec< isize > >{
     ]
 }
 
-pub fn vertex_num_table() -> Vec<usize>{
+pub fn vertex_num_table() -> Vector<usize>{
     vec![
         0, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1,
         1, 1, 2, 1, 2, 2, 2, 1, 2, 1, 3, 1, 2, 1, 2, 1,
@@ -301,38 +305,38 @@ pub fn vertex_num_table() -> Vec<usize>{
     ]
 }
 
-pub fn corner_points() -> Vec< Vector3<f32> >{
+pub fn corner_points() -> Vector< Vec3<f32> >{
     vec![
-        Vector3::new(0.0,0.0,0.0),
-        Vector3::new(1.0,0.0,0.0),
-        Vector3::new(1.0,0.0,1.0),  //clockwise starting from zero y min
-        Vector3::new(0.0,0.0,1.0),
+        Vec3::new(0.0,0.0,0.0),
+        Vec3::new(1.0,0.0,0.0),
+        Vec3::new(1.0,0.0,1.0),  //clockwise starting from zero y min
+        Vec3::new(0.0,0.0,1.0),
 
-        Vector3::new(0.0,1.0,0.0),
-        Vector3::new(1.0,1.0,0.0), //y max
-        Vector3::new(1.0,1.0,1.0),
-        Vector3::new(0.0,1.0,1.0)
+        Vec3::new(0.0,1.0,0.0),
+        Vec3::new(1.0,1.0,0.0), //y max
+        Vec3::new(1.0,1.0,1.0),
+        Vec3::new(0.0,1.0,1.0)
 
     ]
 }
 
 
-pub fn edge_pairs() -> Vec < Vector2<usize> >{
+pub fn edge_pairs() -> Vector< Vec2<usize> >{
     vec![
-        Vector2::new(0,1),
-        Vector2::new(1,2),
-        Vector2::new(3,2),
-        Vector2::new(0,3),
+        Vec2::new(0,1),
+        Vec2::new(1,2),
+        Vec2::new(3,2),
+        Vec2::new(0,3),
 
-        Vector2::new(4,5), 
-        Vector2::new(5,6), //5
-        Vector2::new(7,6), //6
-        Vector2::new(4,7), 
+        Vec2::new(4,5),
+        Vec2::new(5,6), //5
+        Vec2::new(7,6), //6
+        Vec2::new(4,7),
 
-        Vector2::new(4,0),
-        Vector2::new(1,5), 
-        Vector2::new(2,6), //10
-        Vector2::new(3,7)  
+        Vec2::new(4,0),
+        Vec2::new(1,5),
+        Vec2::new(2,6), //10
+        Vec2::new(3,7)
     ]
 }
 
@@ -347,7 +351,7 @@ pub struct Cell<T : Real>{
 pub struct HermiteGrid<T : Real>{
     pub a : T,//length of one edge of a cubic cell
     pub size : usize, //number of cells along each axis
-    pub cells : Vec<Option<Cell<T>>>, // length is size^3
+    pub cells : Vector<Option<Cell<T>>>, // length is size^3
     //after filling the grid each cell must be initialized (set to Some)
 }
 
@@ -372,26 +376,26 @@ impl<T : Real + SupersetOf<f32>> HermiteGrid<T>{
     }
 
 
-    pub fn get_point(&self, x : usize, y : usize, z : usize) -> Vector3<T>{
-        Vector3::new(self.a * convert::<f32, T>(x as f32), self.a * convert::<f32, T>(y as f32), self.a * convert::<f32, T>(z as f32))
+    pub fn get_point(&self, x : usize, y : usize, z : usize) -> Vec3<T>{
+        Vec3::new(self.a * T::from_subset(&(x as f32)), self.a * T::from_subset(&(y as f32)), self.a * T::from_subset(&(z as f32)))
     }
 
     //bounding box of the cell
-    pub fn cube(&self, x : usize, y : usize, z : usize, offset : Vector3<T>) -> Cube<T>{
-        Cube {center : offset + Vector3::new(convert::<f32,T>(x as f32 + 0.5) * self.a, convert::<f32,T>(y as f32 + 0.5) * self.a, convert::<f32,T>(z as f32 + 0.5) * self.a), extent: self.a / convert(2.0)}
+    pub fn cube(&self, x : usize, y : usize, z : usize, offset : Vec3<T>) -> Cube<T>{
+        Cube {center : offset + Vec3::new(T::from_subset(&(x as f32 + 0.5)) * self.a, T::from_subset(&(y as f32 + 0.5)) * self.a, T::from_subset(&(z as f32 + 0.5)) * self.a), extent: self.a / T::from_subset(&2.0)}
     }
 }
 
 
 //it is assumed that surface is smooth in the area along the line and density at the ends of the line have different signs
 //TODO handle multiple intersections per edge ???
-fn sample_surface_intersection(line : &Line3<f32>, n : usize, f : &DenFn3<f32>) -> Vector3<f32>{
+fn sample_surface_intersection(line : Line3<f32>, n : usize, f : &DenFn3<f32>) -> Vec3<f32>{
     let ext = line.end - line.start;
     let norm = ext.norm();
-    let dir = ext / norm;
+    let dir = ext * (1.0 / norm);
 
     //let mut best_abs = std::f32::MAX;
-    //let mut best_point : Option<Vector3<f32>> = None;
+    //let mut best_point : Option<Vec3<f32>> = None;
 
     let mut center = line.start + ext * 0.5;
     let mut cur_ext = norm * 0.25;
@@ -413,10 +417,10 @@ fn sample_surface_intersection(line : &Line3<f32>, n : usize, f : &DenFn3<f32>) 
     center
 }
 
-pub fn sample_normal(point : &Vector3<f32>, eps : f32, f : &DenFn3<f32>) -> Vector3<f32>{
-    Vector3::new( f(Vector3::new(point.x + eps, point.y, point.z)) - f(Vector3::new(point.x, point.y, point.z)),
-                  f(Vector3::new(point.x, point.y + eps, point.z)) - f(Vector3::new(point.x, point.y, point.z)),
-                  f(Vector3::new(point.x, point.y, point.z + eps)) - f(Vector3::new(point.x, point.y, point.z)) ).normalize()
+pub fn sample_normal(point : Vec3<f32>, eps : f32, f : &DenFn3<f32>) -> Vec3<f32>{
+    Vec3::new( f(Vec3::new(point.x + eps, point.y, point.z)) - f(Vec3::new(point.x, point.y, point.z)),
+                  f(Vec3::new(point.x, point.y + eps, point.z)) - f(Vec3::new(point.x, point.y, point.z)),
+                  f(Vec3::new(point.x, point.y, point.z + eps)) - f(Vec3::new(point.x, point.y, point.z)) ).normalize()
 }
 
 fn is_const_sign(a : f32, b : f32) -> bool {
@@ -425,18 +429,18 @@ fn is_const_sign(a : f32, b : f32) -> bool {
 
 //outer list corresponds to each vertex to be placed inside the cell
 //inner list binds edges according to the EMCT to that vertex 
-pub fn which_edges_are_signed(table : &Vec< Vec<isize> >, config : usize) -> Vec<Vec<usize>>{
+pub fn which_edges_are_signed(table : &Vector< Vector<isize> >, config : usize) -> Vector<Vector<usize>>{
     let entry = &table[config];
-    if entry[0] == -2 {return Vec::with_capacity(0)}
-    let mut result = Vec::new(); 
-    let mut cur_vertex = Vec::new();
+    if entry[0] == -2 {return Vector::with_capacity(0)}
+    let mut result = Vector::new();
+    let mut cur_vertex = Vector::new();
     for i in 0..entry.len(){ //entry.len() is always 16
         let k = entry[i];
         if k >= 0 {cur_vertex.push(k as usize)}
         else if k == -2 {result.push(cur_vertex);return result}
         else { //k == -1
             result.push(cur_vertex);
-            cur_vertex = Vec::new();
+            cur_vertex = Vector::new();
         }
     }
 
@@ -445,10 +449,10 @@ pub fn which_edges_are_signed(table : &Vec< Vec<isize> >, config : usize) -> Vec
 }
 
 
-fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
+fn calc_qef(point : Vec3<f32>, planes : &Vector<Plane<f32>>) -> f32{
     let mut qef : f32 = 0.0;
     for plane in planes{
-        let dist_signed = plane.normal.dot(&(point - plane.point));
+        let dist_signed = plane.normal.dot(point - plane.point);
         qef += dist_signed * dist_signed;
     }
 
@@ -456,156 +460,8 @@ fn calc_qef(point : &Vector3<f32>, planes : &Vec<Plane<f32>>) -> f32{
 }
 
 
-
-//works bad
-//try delta approuch
-//start from the center then find a direction in which qef increases most and move a bit along it
-fn solve_qef_iterative(square : &Cube<f32>, threshold : f32, planes : &Vec<Plane<f32>>) -> Vector3<f32>{
-
-    let mut vertex = square.center;
-    let mut next_iter = vertex;
-    
-
-    while threshold < calc_qef(&vertex, planes){
-        let mut qef : f32 = 0.0; //TODO
-        for plane in planes{
-            let dist_signed = plane.normal.dot(&(vertex - plane.point));
-            qef += dist_signed * dist_signed;
-            next_iter += plane.normal * dist_signed;
-        }
-
-        vertex = next_iter / (planes.len() as f32) * 0.7;
-        next_iter = vertex;
-    }
-
-    vertex
-}
-
-//works but the error is too great
-fn solve_qef_analically_ATA_ATb(planes : &Vec<Plane<f32>>) -> Option<Vector3<f32>>{
-    let normals : Vec<f32> = planes.iter().flat_map(|x| x.normal.as_slice().to_owned()).collect();
-    let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
-    //let intersections : Vec<f32> = planes.iter().flat_map(|x| x.point.as_slice().to_owned()).collect();
-    let product : Vec<f32> = planes.iter().map(|x| x.normal.dot(&x.point)).collect();
-    for i in 0..product.len(){
-        Abs.push(normals[3 * i]);
-        Abs.push(normals[3 * i + 1]);
-        Abs.push(normals[3 * i + 2]);
-        Abs.push(product[i]);
-    }
-
-    let A = DMatrix::from_row_slice(normals.len() / 3, 3, normals.as_slice());
-    let ATA = (&A).transpose() * &A;
-    let b = DMatrix::from_row_slice(product.len(), 1, product.as_slice());
-    let ATb = (&A).transpose() * &b; 
-    let Ab = DMatrix::from_row_slice(planes.len(), 4, Abs.as_slice());
-
-    let bTb = (&b).transpose() * (&b);
-    let mag = bTb.norm();
-
-    let qr = ATA.qr();
-    let solved = qr.solve(&ATb);
-    if solved.is_some(){
-        Some(Vector3::new(solved.as_ref().unwrap()[0], solved.as_ref().unwrap()[1], solved.as_ref().unwrap()[2]))
-    }else{
-        None
-    }
-}
-
-fn con(v : Vector3<f32>) -> Vector3<f64>{
-    Vector3::new(v.x as f64, v.y as f64, v.z as f64)
-}
-
-fn con_back(v : Vector3<f64>) -> Vector3<f32>{
-    Vector3::new(v.x as f32, v.y as f32, v.z as f32)
-}
-
-fn solve_qef_analytically_qr(planes : &Vec<Plane<f32>>, bounds : Cube<f32>) -> Vector3<f32>{
-    let mut mass_point = Vector3::zeros();
-    let normals : Vec<f64> = planes.iter().flat_map(|x| {
-        mass_point += con(x.point - bounds.center);
-        vec![x.normal.x as f64, x.normal.y as f64, x.normal.z as f64]
-    }).collect();
-    mass_point = mass_point / 2.0 + con(bounds.center);
-    let mut Abs = Vec::with_capacity(normals.len() * 4 / 3);
-    //let intersections : Vec<f32> = planes.iter().flat_map(|x| x.point.as_slice().to_owned()).collect();
-    let product : Vec<f64> = planes.iter().map(|x| con(x.normal).dot(&(con(x.point) - mass_point))).collect();
-    for i in 0..product.len(){
-        Abs.push(normals[3 * i]);
-        Abs.push(normals[3 * i + 1]);
-        Abs.push(normals[3 * i + 2]);
-        Abs.push(product[i]);
-    }
-
-    let Ab = DMatrix::from_row_slice(planes.len(), 4, Abs.as_slice());
-
-
-    let qr1 = Ab.qr();
-    let R = qr1.r();
-
-    //println!("R : {}", &R);
-
-    let A1 = R.slice((0,0), (3,3));
-    let b1 = R.slice((0,3), (3,1));
-    let a1 = A1.fixed_slice::<U3,U3>(0,0);
-
-    //println!("A1 : {}", &A1);
-    //println!("b1 : {}", &b1);
-
-    let qr2 = A1.qr();
-
-    //println!("{}", a1.determinant().abs());
-    //let det = a1.determinant().abs();
-    let try = qr2.solve(&Vector3::new(b1[0], b1[1], b1[2]));
-    let solution = 
-        match try{
-            Some(minimizer) => {
-                //con_back(minimizer + mass_point)
-                if(point3_inside_cube_inclusive(con_back(minimizer + mass_point), bounds )){
-                    con_back(minimizer + mass_point)
-                }else{
-                    con_back(mass_point)
-                }
-            },
-            None => {
-                con_back(mass_point)
-            }
-    };
-
-    //let mut r = unsafe{R.get_unchecked(3,3)};
-    //let svd = A1.svd(true,true); 
-    //let sol = svd.solve(&b1,0.0); //does not want to work
-
-    //Some(Vector3::new(sol[0], sol[1], sol[2]))  
-
-    solution
-
-  
-}
-
-//minimizer + error
-fn solve_qef_via_bindings(planes : &Vec<Plane<f32>>) -> (Vector3<f32>,f32) {
-    let mut ATA = Matrix3::zeros();
-    let mut ATb = Vector3::zeros();
-
-    let mut accum = Vector4::zeros();
-
-    for plane in planes{
-        qef_add_r(plane.normal, plane.point, &mut ATA, &mut ATb, &mut accum);
-    }
-
-    let mut res = Vector3::zeros();
-
-    //println!("{}", &ATb);
-    //println!("{}", &ATA);
-    //println!("accum {}", &accum);
-    let err = qef_solve_r(ATA, ATb, accum, &mut res);
-    //println!("result is {}", &res);
-    (res, err)
-}
-
-fn sample_qef_brute(square : &Cube<f32>, n : usize, planes : &Vec<Plane<f32>>) -> Vector3<f32> {
-    let ext = Vector3::new(square.extent, square.extent, square.extent);
+fn sample_qef_brute(square : Cube<f32>, n : usize, planes : &Vector<Plane<f32>>) -> Vec3<f32> {
+    let ext = Vec3::new(square.extent, square.extent, square.extent);
     let min = square.center - ext;
 
     let mut best_qef = std::f32::MAX;
@@ -614,10 +470,10 @@ fn sample_qef_brute(square : &Cube<f32>, n : usize, planes : &Vec<Plane<f32>>) -
     for i in 0..n{
         for j in 0..n{
             for k in 0..n{
-                let point = min + Vector3::new(ext.x * (2.0 * (i as f32) + 1.0) / (n as f32),
+                let point = min + Vec3::new(ext.x * (2.0 * (i as f32) + 1.0) / (n as f32),
                                                ext.y * (2.0 * (j as f32) + 1.0) / (n as f32),
                                                ext.z * (2.0 * (k as f32) + 1.0) / (n as f32));
-                let qef = calc_qef(&point, &planes);
+                let qef = calc_qef(point, planes);
 
                 if qef < best_qef{
                     best_qef = qef;
@@ -630,19 +486,72 @@ fn sample_qef_brute(square : &Cube<f32>, n : usize, planes : &Vec<Plane<f32>>) -
     best_point
 }
 
+fn find_minimizer(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point : Vec3<f32>) -> Vec3<f32> {
+    let mut mat : Mat<f32, U6, U4> = Mat::empty();
+    //println!("planes count = {}", planes.len()); //6 planes is possible
+    for i in 0..planes.len(){
+        mat[(i, 0)] = planes[i].normal.x;
+        mat[(i, 1)] = planes[i].normal.y;
+        mat[(i, 2)] = planes[i].normal.z;
+        mat[(i, 3)] = planes[i].normal.dot(planes[i].point - mass_point);
+    }
+
+
+    let eps = 0.001;
+
+
+    let r = givens_rot(mat, eps); //TODO no need for q here
+
+    //println!("r = {}\n", r);
+
+    let mut mat_a : Mat3<f32> = Mat::empty();
+    mat_a[(0, 0)] = r[(0, 0)];
+    mat_a[(0, 1)] = r[(0, 1)];
+    mat_a[(0, 2)] = r[(0, 2)];
+    mat_a[(1, 1)] = r[(1, 1)];
+    mat_a[(1, 2)] = r[(1, 2)];
+    mat_a[(2, 2)] = r[(2, 2)];
+
+    let b = vec3![r[(0, 3)], r[(1, 3)], r[(2, 3)]];
+    let residual = r[(3, 3)];
+
+    let mat_a_t = mat_a.transpose();
+    let mat_a_t_a = mat_a_t * mat_a;
+    let mat_a_t_b = mat_a_t * b;
+    let (mut eigenval, u) = qr_eigen(mat_a_t_a, eps, eps);
+
+    let truncate_eps = 0.1;
+    let eigenval_mapped = Mat::<f32, U3, U1>{ar : eigenval.ar.map(|v| if v.abs() > truncate_eps {1.0/v} else {0.0})};
+    let mut mat_diag : Mat3<f32> = Mat::empty();
+    mat_diag[(0, 0)] = eigenval_mapped[0];
+    mat_diag[(1, 1)] = eigenval_mapped[1];
+    mat_diag[(2, 2)] = eigenval_mapped[2];
+
+    let mat_inverse = u * mat_diag * u.transpose();
+
+    let minimizer = mat_inverse * mat_a_t_b + mass_point;
+
+    /*if (minimizer - mass_point).norm() < eps{
+        println!("mat {}", mat);
+        println!("r {}", r);
+        println!("eigenvalues {}", eigenval);
+    }*/
+
+    minimizer
+}
 
 //constructs grid: calculates hermite data and configuration for each cell
 //TODO generating triangles right in this function would benefit performance (no extra looping through cells)
-pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
+pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vec3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
     let corners = corner_points();
     let edge_pairs = edge_pairs();
     let edge_table = edge_table();
 
     //bindings between edge and vertex for each cell
-    let mut cache : Vec< Option< HashMap<usize, Vector3<f32>  > > > = vec![None;size * size * size];
+    let mut cache : Vector< Option< HashMap<usize, Vec3<f32>  > > > = vec![None;size * size * size];
 
-    let mut load_cell = |grid : &mut HermiteGrid<f32>, x : usize, y : usize, z : usize, cache : &mut Vec<Option<HashMap<usize,Vector3<f32>>>>|{
-        let cell_min = offset + Vector3::new(x as f32 * a, y as f32 * a, z as f32 * a);
+    let mut load_cell = |grid : &mut HermiteGrid<f32>, x : usize, y : usize, z : usize, cache : &mut Vector<Option<HashMap<usize,Vec3<f32>>>>|{
+        let cell_min = offset + Vec3::new(x as f32 * a, y as f32 * a, z as f32 * a);
         let bounds = grid.cube(x,y,z,offset);
         let mut densities = [0.0;8];
         let mut config = 0;
@@ -663,17 +572,17 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
         let mut cached_cell = HashMap::new();
 
         if vertices.len() == 1 { //render cells that contain more than 1 vertex
-            add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vector3::new(0.0, 1.0, 0.0));
+            //add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vec3::new(0.0, 1.0, 0.0));
         }
         if vertices.len() > 1 { //render cells that contain more than 1 vertex
-            add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vector3::new(1.0, 0.0, 0.0));
+            //add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vec3::new(1.0, 0.0, 0.0));
         }
 
         for vertex in vertices{
 
 
-            let mut cur_planes = Vec::with_capacity(vertex.len());
-
+            let mut cur_planes = Vector::with_capacity(vertex.len());
+            let mut mass_point = Vec3::empty();
             
 
             for edge_id in &vertex{
@@ -683,19 +592,35 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
                 let edge = Line3{start : cell_min + v1 * a, end : cell_min + v2 * a};
 
-                let intersection = sample_surface_intersection(&edge, accuracy, f);
+                let intersection = sample_surface_intersection(edge, accuracy, f);
                 
-                let normal = sample_normal(&intersection, 1e-5, f);
+                let mut normal = sample_normal(intersection, 1e-5, f);
 
-                add_cube_bounds_pos_color(render_debug_lines, Cube{center : intersection, extent : bounds.extent / 16.0}, Vector3::new(1.0, 1.0, 1.0));
+                mass_point += intersection - bounds.center;
+
+                if normal.x.is_nan() || normal.y.is_nan() || normal.z.is_nan() {
+                    //println!("nan in normal !");
+                    //println!("intersection {}", intersection);
+                    //exit(1);
+                    //add_cube_bounds_pos_color(render_debug_lines, bounds.clone(), Vec3::new(1.0, 0.0, 0.0));
+                    normal = Vec3::empty();
+                    let plane = Plane{point : intersection, normal};
+                    hermite_data.insert(edge_id.clone(), plane);
+                    continue; // do not push zero normal to the planes
+                    //weighted normals for such cases for proper lighting ?
+                }
+
+                add_cube_bounds_pos_color(render_debug_lines, Cube{center : intersection, extent : bounds.extent / 16.0}, Vec3::new(1.0, 1.0, 1.0));
 
                 let plane = Plane{point : intersection, normal};
                 hermite_data.insert(edge_id.clone(), plane);
                 cur_planes.push(plane); //for current vertex QEF processing
             }
+            mass_point *= 1.0 / vertex.len() as f32;
+            mass_point += bounds.center;
 
 
-            let is_valid_qef_estimation = |minimizer : &Vector3<f32>| -> bool{
+            let is_valid_qef_estimation = |minimizer : Vec3<f32>| -> bool{
                 point3_inside_sphere_inclusive(minimizer, Sphere{center : bounds.center, rad : 3.0.sqrt() * bounds.extent * 3.1})
             };
            
@@ -716,13 +641,13 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
             //             let g = between.sample(&mut rng);
             //             let b = between.sample(&mut rng);
 
-            //             add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(r,g,b));
-            //             add_square3_bounds_color(render_debug_lines, Square3{center : try.0, extent : 0.075/4.0}, Vector3::new(r,g,b));
-            //             add_line3_color(render_debug_lines, Line3{start : bounds.center, end : try.0}, Vector3::new(r,g,b));
+            //             add_square3_bounds_color(render_debug_lines, bounds.clone(), Vec3::new(r,g,b));
+            //             add_square3_bounds_color(render_debug_lines, Square3{center : try.0, extent : 0.075/4.0}, Vec3::new(r,g,b));
+            //             add_line3_color(render_debug_lines, Line3{start : bounds.center, end : try.0}, Vec3::new(r,g,b));
 
             //             for plane in &cur_planes{
-            //                 add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vector3::new(r,g,b));
-            //                 add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vector3::new(r,g,b));
+            //                 add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vec3::new(r,g,b));
+            //                 add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vec3::new(r,g,b));
             //             }
 
             //             try.0
@@ -735,9 +660,9 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
             //     println!("sampled");
             //     sample_qef_brute(&bounds, 32, &cur_planes)
             // };
-            let minimizer = solve_qef_analytically_qr(&cur_planes, bounds);
+            let minimizer = find_minimizer( bounds, &cur_planes, mass_point);
 
-            add_cube_bounds_pos_color(render_debug_lines, Cube{center : minimizer, extent : bounds.extent / 16.0}, Vector3::new(1.0, 1.0, 0.0));
+            add_cube_bounds_pos_color(render_debug_lines, Cube{center : minimizer, extent : bounds.extent / 16.0}, Vec3::new(1.0, 1.0, 0.0));
 
             // if !is_valid_qef_estimation(&minimizer){
             //     println!("bad minimizer {}, det {}, err {}", &minimizer, try.1, calc_qef(&minimizer, &cur_planes));
@@ -750,18 +675,18 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
             //     let g = between.sample(&mut rng);
             //     let b = between.sample(&mut rng);
 
-            //     add_square3_bounds_color(render_debug_lines, bounds.clone(), Vector3::new(r,g,b));
-            //     add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vector3::new(r,g,b));
-            //     add_line3_color(render_debug_lines, Line3{start : bounds.center, end : minimizer}, Vector3::new(r,g,b));
+            //     add_square3_bounds_color(render_debug_lines, bounds.clone(), Vec3::new(r,g,b));
+            //     add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vec3::new(r,g,b));
+            //     add_line3_color(render_debug_lines, Line3{start : bounds.center, end : minimizer}, Vec3::new(r,g,b));
 
             //     for plane in &cur_planes{
-            //         add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vector3::new(r,g,b));
-            //         add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vector3::new(r,g,b));
+            //         add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vec3::new(r,g,b));
+            //         add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vec3::new(r,g,b));
             //     }
 
             // }
 
-            //add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vector3::new(1.0,1.0,0.0));
+            //add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vec3::new(1.0,1.0,0.0));
 
             for edge_id in &vertex { 
                 cached_cell.insert(edge_id.clone(), minimizer);//duplicates are not possible
@@ -778,7 +703,7 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
 
     };
 
-    let mut load_cell_cached = |grid : &mut HermiteGrid<f32>, x : usize, y : usize, z : usize, cache : &mut Vec<Option<HashMap<usize,Vector3<f32>>>>|{
+    let mut load_cell_cached = |grid : &mut HermiteGrid<f32>, x : usize, y : usize, z : usize, cache : &mut Vector<Option<HashMap<usize,Vec3<f32>>>>|{
         let t = z * size * size + y * size + x;
 
         let mut load = false;
@@ -814,9 +739,9 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                             let r = load_cell_cached(&mut grid, x+1,y,z, &mut cache).get(&7).unwrap().clone();
                             let ru = load_cell_cached(&mut grid, x+1,y+1,z, &mut cache).get(&3).unwrap().clone();
                             let u = load_cell_cached(&mut grid, x,y+1,z, &mut cache).get(&1).unwrap().clone();
-                            let normal = &grid.get(x,y,z).hermite_data.get(&5).unwrap().normal;
-                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : r, p3 : ru}, &Vector3::new(1.0, 1.0, 0.0), normal);
-                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : ru, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            let normal = grid.get(x,y,z).hermite_data.get(&5).unwrap().normal;
+                            add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : r, p3 : ru}, Vec3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : ru, p3 : u}, Vec3::new(1.0, 1.0, 0.0), normal);
                         },
                         6 => {
                             let f = load_cell_cached(&mut grid, x,y,z+1, &mut cache).get(&4).unwrap().clone();
@@ -825,9 +750,9 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                             // println!("vertex count {:?}, edges: {:?}, map : {:?}", vertex_num_table()[config], edge_table[config], &fu_);
                             let fu = fu_.get(&0).unwrap().clone();
                             let u = load_cell_cached(&mut grid, x,y+1,z, &mut cache).get(&2).unwrap().clone();
-                            let normal = &grid.get(x,y,z).hermite_data.get(&6).unwrap().normal;
-                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : fu}, &Vector3::new(1.0, 1.0, 0.0), normal);
-                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : fu, p3 : u}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            let normal = grid.get(x,y,z).hermite_data.get(&6).unwrap().normal;
+                            add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : f, p3 : fu}, Vec3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : fu, p3 : u}, Vec3::new(1.0, 1.0, 0.0), normal);
                         },
                         10 => {
                             let r_ = load_cell_cached(&mut grid, x+1,y,z, &mut cache);
@@ -838,10 +763,10 @@ pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vector3<f32>, a : f32, s
                             let rf = load_cell_cached(&mut grid, x+1,y,z+1, &mut cache).get(&8).unwrap().clone();
                             let f = load_cell_cached(&mut grid, x,y,z+1, &mut cache).get(&9).unwrap().clone();
 
-                            let normal = &grid.get(x,y,z).hermite_data.get(&10).unwrap().normal;
+                            let normal = grid.get(x,y,z).hermite_data.get(&10).unwrap().normal;
 
-                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : rf, p3 : r}, &Vector3::new(1.0, 1.0, 0.0), normal);
-                            add_triangle_pos_color_normal(render_tr_light, &Triangle3{p1 : t, p2 : f, p3 : rf}, &Vector3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : rf, p3 : r}, Vec3::new(1.0, 1.0, 0.0), normal);
+                            add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : f, p3 : rf}, Vec3::new(1.0, 1.0, 0.0), normal);
                         },
                         _ => ()
                     }

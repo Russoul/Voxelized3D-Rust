@@ -409,7 +409,6 @@ pub fn givens_rot<A : Value + Mul + Add + MultiplicativeMonoid + AdditiveMonoid 
                 let r = A::sqrt(a * a + b * b);
                 let cos = a/r;
                 let sin = b/r;
-                println!("givens mat i = {}, j = {}, c = {}, s = {}\ngivens\n{}\nres\n{}", i + 1, j + 1, cos, sin, givens_mat::<A, N>(i, j, cos, sin), givens_mat::<A, N>(i, j, cos, sin).transpose() * c);
                 c = givens_mat::<A, N>(i, j, cos, sin).transpose() * c;
             }
         }
@@ -441,7 +440,7 @@ pub fn givens_rot_qr<A : Value + Mul + Add + MultiplicativeMonoid + AdditiveMono
     (q, c)
 }
 
-//computes SDV of symmetric matrix
+//computes SDV of symmetric matrix, returns all eigenvalues unsorted, and a matrix, columns of which are eigenvectors
 pub fn qr_eigen<A : Value + Mul + Add + MultiplicativeMonoid + AdditiveMonoid + Neg<Output=A> + Real, N : Unsigned + Mul<N> + Debug + Clone>(m : Mat<A, N, N>, eps_0 : A, eps_stop : A) -> (Vec<A, N>, Mat<A, N, N>) where
     Prod<N,N> : ArrayLength<A>, GenericArray<A, typenum::Prod<N,N>> : Copy, N : Min<N>, N : Mul<U1>, Prod<N, U1> : ArrayLength<A>{
     let mut x = m;
@@ -452,7 +451,6 @@ pub fn qr_eigen<A : Value + Mul + Add + MultiplicativeMonoid + AdditiveMonoid + 
     while con || num_iter > 30{
 
         let (q_n, r) = givens_rot_qr(x, eps_0);
-        //println!("here {:?}", r);
         x = r * q_n;
         q = q * q_n;
 

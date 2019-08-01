@@ -87,6 +87,7 @@ impl Program{
     }
 
 
+    //mat is assumed to be in column major order
     pub fn set_float4x4(&self, name: &str, transpose: bool, mat: &[f32]){
         self.enable();
         gl_uniform_matrix4fv(self.get_uniform(name), transpose, mat)

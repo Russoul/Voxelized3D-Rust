@@ -288,6 +288,22 @@ for Mat<T,N,M> where N : Mul<M>, Prod<N,M> : ArrayLength<T>{
 
 }
 
+impl<   T : Mul<Output=T> + Value,
+    N : Clone + Unsigned,
+    M : Clone + Unsigned>
+
+MulAssign<T>
+
+for Mat<T,N,M> where N : Mul<M>, Prod<N,M> : ArrayLength<T>{
+
+
+    fn mul_assign(&mut self, k : T){
+        *self = Mat{ar : GenericArray::<T, Prod<N, M>>::
+        generate(&|i| self.get(i) * k)}
+    }
+
+}
+
 impl<   T : Sub<Output=T> + Value,
     N : Clone + Unsigned,
     M : Clone + Unsigned>
@@ -396,21 +412,21 @@ for Mat<T,N,M> where N : Mul<M>, Prod<N,M> : ArrayLength<T>{
 
 }
 
-pub fn dot<T : Value + Identity<Additive> + Mul<Output=T> + Add<Output=T>, N : Unsigned + Clone + Mul<U1>>(that : Vec<T,N>, other : Vec<T,N>) -> T where N : Mul<U1>, Prod<N,U1> : ArrayLength<T>,{
+pub fn dot<T : Value + Identity<Additive> + Mul<Output=T> + AddAssign, N : Unsigned + Clone + Mul<U1>>(that : Vec<T,N>, other : Vec<T,N>) -> T where N : Mul<U1>, Prod<N,U1> : ArrayLength<T>,{
         let mut res = T::identity();
         for i in 0..<N as Unsigned>::to_usize(){
-                res = res + that.ar[i] * other.ar[i];
+                res += that.ar[i] * other.ar[i];
         }
 
         res
 }
 
 pub fn cross<T : Value + Mul<Output=T> + Add<Output=T> + Sub<Output=T>>(that : Vec3<T>, other : Vec3<T>) -> Vec3<T>{
-        Vec3::new(that.y * other.z - other.y * that.z, other.x * that.z -that.x * other.z, that.x * other.y - other.x * that.y)
+        Vec3::new(that.y * other.z - other.y * that.z, other.x * that.z - that.x * other.z, that.x * other.y - other.x * that.y)
 }
 
 impl<
-    T : Mul<Output=T> + Add<Output=T> + AbstractMonoid<Additive> + Value,
+    T : Mul<Output=T> + AddAssign + AbstractMonoid<Additive> + Value,
     N : Clone + Unsigned>
 
 Vec<T,N> where N : Mul<U1> + Unsigned, Prod<N,U1> : ArrayLength<T>{
@@ -431,13 +447,13 @@ impl<
 Vec<T,N> where N : Mul<U1> + Unsigned, Prod<N,U1> : ArrayLength<T>, GenericArray<T, Prod<N, U1>> : Copy{
 
     #[inline]
-    pub fn norm(self, other : Vec<T,N>) -> T{
-        T::sqrt(dot(self, other))
+    pub fn norm(self) -> T{
+        T::sqrt(dot(self, self))
     }
 
     #[inline]
     pub fn normalize(self) -> Vec<T, N>{
-        self * (T::one() / self.norm(self))
+        self * (T::one() / self.norm())
     }
 
 }
@@ -459,7 +475,7 @@ macro_rules! vec3 {
 }
 
 
-
+#[cfg(test)]
 pub fn test_matrices(){
     let a = Vec::<_, U3>{ar : arr!(i32; 1,0,0)};
     let b = Vec::<_, U3>{ar : arr!(i32; -1,0,0)};

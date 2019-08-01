@@ -12,6 +12,7 @@ use matrix::*;
 
 use glfw::{Action, Context, Key, Glfw, WindowHint};
 use time::precise_time_ns;
+use std::fmt::Display;
 
 fn load_shaders_vf() -> HashMap<String, Program>{
     let dir : &str = "./assets/shaders/";
@@ -80,6 +81,18 @@ pub struct Cam{
     pub pos : Vec3<f32>,
     pub look : Vec3<f32>,
     pub up : Vec3<f32>,
+}
+
+
+impl Display for Cam{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        writeln!(f, "Cam{{");
+        writeln!(f, "pos = {}, ", self.pos);
+        writeln!(f, "look = {}, ", self.look);
+        writeln!(f, "up = {}, ", self.up);
+        writeln!(f, "}}");
+        Ok(())
+    }
 }
 
 pub struct Renderer{
@@ -176,9 +189,8 @@ impl Renderer{
             let shaderColor = self.get_shaders().get("color").unwrap();
             shaderColor.enable();
 
-
-            shaderColor.set_float4x4("P", false, persp.as_slice());
-            shaderColor.set_float4x4("V", false, view.as_slice());
+            shaderColor.set_float4x4("P", true, persp.as_slice());
+            shaderColor.set_float4x4("V", true, view.as_slice());
 
             if !self.render_lines_pos_color.constructed{
                 self.render_lines_pos_color.construct();
@@ -196,8 +208,8 @@ impl Renderer{
             shaderLighting.enable();
 
 
-            shaderLighting.set_float4x4("P", false, persp.as_slice());
-            shaderLighting.set_float4x4("V", false, view.as_slice());
+            shaderLighting.set_float4x4("P", true, persp.as_slice());
+            shaderLighting.set_float4x4("V", true, view.as_slice());
 
             shaderLighting.set_vec3f("pointLight.pos" ,Vec3::new(0.0, 8.0,0.0));
             shaderLighting.set_vec3f("pointLight.color" ,(red + green + blue) * 15.0);
