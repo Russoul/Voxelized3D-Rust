@@ -389,7 +389,7 @@ impl<T : Real + SupersetOf<f32>> HermiteGrid<T>{
 
 //it is assumed that surface is smooth in the area along the line and density at the ends of the line have different signs
 //TODO handle multiple intersections per edge ???
-fn sample_surface_intersection(line : Line3<f32>, n : usize, f : &DenFn3<f32>) -> Vec3<f32>{
+fn sample_surface_intersection(line : Line3<f32>, n : usize, f : impl DenFn3<f32>) -> Vec3<f32>{
     let ext = line.end - line.start;
     let norm = ext.norm();
     let dir = ext * (1.0 / norm);
@@ -417,7 +417,7 @@ fn sample_surface_intersection(line : Line3<f32>, n : usize, f : &DenFn3<f32>) -
     center
 }
 
-pub fn sample_normal(point : Vec3<f32>, eps : f32, f : &DenFn3<f32>) -> Vec3<f32>{
+pub fn sample_normal(point : Vec3<f32>, eps : f32, f : impl DenFn3<f32>) -> Vec3<f32>{
     Vec3::new( f(Vec3::new(point.x + eps, point.y, point.z)) - f(Vec3::new(point.x, point.y, point.z)),
                   f(Vec3::new(point.x, point.y + eps, point.z)) - f(Vec3::new(point.x, point.y, point.z)),
                   f(Vec3::new(point.x, point.y, point.z + eps)) - f(Vec3::new(point.x, point.y, point.z)) ).normalize()
@@ -542,7 +542,7 @@ fn find_minimizer(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point :
 
 //constructs grid: calculates hermite data and configuration for each cell
 //TODO generating triangles right in this function would benefit performance (no extra looping through cells)
-pub fn construct_grid<'f>(f : &'f DenFn3<f32>, offset : Vec3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
+pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
     let corners = corner_points();
     let edge_pairs = edge_pairs();
     let edge_table = edge_table();

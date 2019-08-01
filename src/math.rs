@@ -76,37 +76,39 @@ pub struct Sphere<T : Value>{
 
 
 
-pub type DenFn2<'a, T> = Box<Fn(Vec2<T>) -> T + 'a>;
-pub type DenFn3<T> = Box<Fn(Vec3<T>) -> T>;
+pub trait DenFn2<T : Value> : Fn(Vec2<T>) -> T + Copy{}
+pub trait DenFn3<T : Value> : Fn(Vec3<T>) -> T + Copy{}
 
 
-pub fn intersection2<'a, 'b, T : Real>(a : &'a DenFn2<'a, T>, b : &'a DenFn2<'a, T>) -> DenFn2<'b, T> where 'a : 'b{
-    Box::new(move |x|{Real::max(a(x), b(x))})
-}
+impl<T : Value, F : Fn(Vec2<T>) -> T + Copy> DenFn2<T> for F{}
+impl<T : Value, F : Fn(Vec3<T>) -> T + Copy> DenFn3<T> for F{}
 
-pub fn intersection2_move<'a, 'b, T : Real>(a : DenFn2<'a, T>, b : DenFn2<'a, T>) -> DenFn2<'b, T> where 'a : 'b{
-    Box::new(move |x|{Real::max((*a)(x), (*b)(x))})
-}
-
-pub fn union2<'a,'b, T : Real>(a : &'a DenFn2<T>, b : &'a DenFn2<T>) -> DenFn2<'b, T> where 'a : 'b{
-    Box::new(move |x| {Real::min(a(x), b(x))})
+pub fn intersection2<T : Real>(a : impl DenFn2<T>, b : impl DenFn2<T>) -> impl DenFn2<T>{
+    move |x : Vec2<T>|{Real::max(a(x), b(x))}
 }
 
 
-pub fn difference2<'a,'b, T : Real>(a : &'a DenFn2<T>, b : &'a DenFn2<T>) -> DenFn2<'b, T> where 'a : 'b{
-    Box::new(move |x| {Real::max(a(x), -b(x))})
+pub fn union2<T : Real>(a : impl DenFn2<T>, b : impl DenFn2<T>) -> impl DenFn2<T>{
+    move |x|{Real::min(a(x), b(x))}
 }
 
-pub fn intersection3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
-    Box::new(move |x|{Real::max(a(x), b(x))})
+
+pub fn difference2<T : Real>(a : impl DenFn2<T>, b : impl DenFn2<T>) -> impl DenFn2<T>{
+    move |x|{Real::max(a(x), -b(x))}
 }
 
-pub fn union3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
-    Box::new(move |x| {Real::min(a(x), b(x))})
+pub fn intersection3<T : Real>(a : impl DenFn3<T>, b : impl DenFn3<T>) -> impl DenFn3<T>{
+    move |x|{Real::max(a(x), b(x))}
 }
 
-pub fn difference3<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
-    Box::new(move |x| {Real::max(a(x), -b(x))})
+
+pub fn union3<T : Real>(a : impl DenFn3<T>, b : impl DenFn3<T>) -> impl DenFn3<T>{
+    move |x|{Real::min(a(x), b(x))}
+}
+
+
+pub fn difference3<T : Real>(a : impl DenFn3<T>, b : impl DenFn3<T>) -> impl DenFn3<T>{
+    move |x|{Real::max(a(x), -b(x))}
 }
 
 //0 to 1.0
@@ -128,8 +130,8 @@ pub fn octave_perlin2(perlin : &Perlin, x : f32, z : f32, octaves : usize, persi
     total as f32 / max_value
 }
 
-pub fn noise_f32(perlin : Perlin, cube : Cube<f32>) -> DenFn3<f32>{
-    Box::new( move |x| {
+pub fn noise_f32(perlin : Perlin, cube : Cube<f32>) -> impl DenFn3<f32>{
+     move |x| {
         if point3_inside_cube_inclusive(x, cube){
             let den = -octave_perlin2(&perlin, x.x - (cube.center.x - cube.extent), x.z - (cube.center.z - cube.extent), 4, 0.56) * 2.0 * cube.extent;
             let dy = (x.y - (cube.center.y - cube.extent) ); //cube.extent / 2.0 ; // 0 - 1
@@ -139,84 +141,75 @@ pub fn noise_f32(perlin : Perlin, cube : Cube<f32>) -> DenFn3<f32>{
             0.01
         }
         
-    })
+    }
 }
 
 
-pub fn mk_circle2<'a, T : Real + Copy>(center : Vec2<T>, rad : T) -> DenFn2<'a, T>{
-    Box::new(move |x|{
+pub fn mk_circle2<T : Real + Copy>(center : Vec2<T>, rad : T) -> impl DenFn2<T>{
+    move |x|{
         let dist = x - center;
         dot(dist,dist) - rad * rad
-    })
+    }
 }
 
-pub fn mk_half_plane2_left<'a, T : Real + Copy>(x : T) -> DenFn2<'a, T>{
-    Box::new(move |p|{p.x - x})
+pub fn mk_half_plane2_left<T : Real + Copy>(x : T) -> impl DenFn2<T>{
+    move |p : Vec2<T>|{p.x - x}
 }
 
-pub fn mk_half_plane2_right<'a, T : Real + Copy>(x : T) -> DenFn2<'a, T>{
-    Box::new(move |p|{x - p.x})
-}
-
-
-pub fn mk_half_plane2_lower<'a, T : Real + Copy>(y : T) -> DenFn2<'a, T>{
-    Box::new(move |p|{p.y - y})
-}
-
-pub fn mk_half_plane2_upper<'a, T : Real + Copy>(y : T) -> DenFn2<'a, T>{
-    Box::new(move |p|{y - p.y})
+pub fn mk_half_plane2_right<T : Real + Copy>(x : T) -> impl DenFn2<T>{
+    move |p : Vec2<T>|{x - p.x}
 }
 
 
-
-pub fn union3_mat<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
-    Box::new(move |x| {Real::min(a(x), b(x))})
+pub fn mk_half_plane2_lower<T : Real + Copy>(y : T) -> impl DenFn2<T>{
+    move |p : Vec2<T>|{p.y - y}
 }
 
-pub fn difference3_mat<T : Real>(a : DenFn3<T>, b : DenFn3<T>) -> DenFn3<T>{
-    Box::new(move |x| {Real::max(a(x), -b(x))})
+pub fn mk_half_plane2_upper<T : Real + Copy>(y : T) -> impl DenFn2<T>{
+    move |p : Vec2<T>|{y - p.y}
 }
 
-pub fn mk_half_space_x_neg<T : Real>(x : T) -> DenFn3<T>{
-    Box::new(move |p|{p.x - x})
+
+pub fn mk_half_space_x_neg<T : Real>(x : T) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{p.x - x}
 }
 
-pub fn mk_half_space_x_pos<T : Real>(x : T) -> DenFn3<T>{
-    Box::new(move |p|{x - p.x})
+pub fn mk_half_space_x_pos<T : Real>(x : T) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{x - p.x}
 }
 
-pub fn mk_half_space_y_neg<T : Real>(y : T) -> DenFn3<T>{
-    Box::new(move |p|{p.y - y})
+pub fn mk_half_space_y_neg<T : Real>(y : T) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{p.y - y}
 }
 
-pub fn mk_half_space_y_pos<T : Real>(y : T) -> DenFn3<T>{
-    Box::new(move |p|{y - p.y})
+pub fn mk_half_space_y_pos<T : Real>(y : T) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{y - p.y}
 }
 
-pub fn mk_half_space_z_neg<T : Real>(z : T) -> DenFn3<T>{
-    Box::new(move |p|{p.z - z})
+pub fn mk_half_space_z_neg<T : Real>(z : T) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{p.z - z}
 }
 
-pub fn mk_half_space_z_pos<T : Real>(z : T) -> DenFn3<T>{
-    Box::new(move |p|{z - p.z})
+pub fn mk_half_space_z_pos<T : Real>(z : T) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{z - p.z}
 }
 
-pub fn mk_rectangle2<'a, T : Real>(center : Vec2<T>, extent : Vec2<T>) -> DenFn2<'a, T> {
+pub fn mk_rectangle2<T : Real>(center : Vec2<T>, extent : Vec2<T>) -> impl DenFn2<T> {
     let right = mk_half_plane2_right(center.x - extent.x);
     let left = mk_half_plane2_left(center.x + extent.x);
 
     let lower = mk_half_plane2_lower(center.y + extent.y);
     let upper = mk_half_plane2_upper(center.y - extent.y);
 
-    let i1 = intersection2_move(left, right);
-    let i2 = intersection2_move(upper, lower);
+    let i1 = intersection2(left, right);
+    let i2 = intersection2(upper, lower);
 
-    intersection2_move(i1, i2)
+    intersection2(i1, i2)
 }
 
 
 
-pub fn mk_aabb<T : Real + Copy>(center : Vec3<T>, extent : Vec3<T>) -> DenFn3<T> {
+pub fn mk_aabb<T : Real + Copy>(center : Vec3<T>, extent : Vec3<T>) -> impl DenFn3<T> {
     let x_neg = mk_half_space_x_neg(center.x + extent.x);
     let x_pos = mk_half_space_x_pos(center.x - extent.x);
 
@@ -235,23 +228,23 @@ pub fn mk_aabb<T : Real + Copy>(center : Vec3<T>, extent : Vec3<T>) -> DenFn3<T>
     intersection3(ixy, iz)
 }
 
-pub fn mk_half_space_pos<T : Real>(plane : Plane<T>) -> DenFn3<T>{
-     Box::new(move |p|{
+pub fn mk_half_space_pos<T : Real>(plane : Plane<T>) -> impl DenFn3<T>{
+     move |p|{
         let d = p - plane.point;
         let dist = dot(d,plane.normal);
         -dist 
-     })
+     }
 }
 
-pub fn mk_half_space_neg<T : Real>(plane : Plane<T>) -> DenFn3<T>{
-     Box::new(move |p|{
+pub fn mk_half_space_neg<T : Real>(plane : Plane<T>) -> impl DenFn3<T>{
+     move |p|{
         let d = p - plane.point;
         let dist = dot(d, plane.normal);
         dist 
-     })
+     }
 }
 
-pub fn mk_obb<T : Real>(center : Vec3<T>, right : Vec3<T>, up : Vec3<T>, extent : Vec3<T>) -> DenFn3<T> {
+pub fn mk_obb<T : Real>(center : Vec3<T>, right : Vec3<T>, up : Vec3<T>, extent : Vec3<T>) -> impl DenFn3<T> {
     let r_neg = mk_half_space_neg(Plane{point : center + right * extent.x, normal : right});
     let r_pos = mk_half_space_pos(Plane{point : center - right * extent.x, normal : right});
 
@@ -272,35 +265,36 @@ pub fn mk_obb<T : Real>(center : Vec3<T>, right : Vec3<T>, up : Vec3<T>, extent 
     intersection3(ixy, iz)
 }
 
-pub fn mk_sphere<T : Real>(sphere : Sphere<T>) -> DenFn3<T>{
-    Box::new(move |x|{
+pub fn mk_sphere<T : Real>(sphere : Sphere<T>) -> impl DenFn3<T>{
+    move |x : Vec3<T>|{
         let dist = x - sphere.center;
         dot(dist,dist) - sphere.rad * sphere.rad
-    })
+    }
 }
 
-pub fn mk_torus_z<T : Real>(r_big : T, r : T, offset : Vec3<T>) -> DenFn3<T>{
-    Box::new(move |p|{
+pub fn mk_torus_z<T : Real>(r_big : T, r : T, offset : Vec3<T>) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{
         let x = p - offset;
         let a = (x.x * x.x + x.y * x.y).sqrt() - r_big;
         a * a + x.z * x.z - r * r
-    })
+    }
 }
 
-pub fn mk_torus_y<T : Real>(r_big : T, r : T, offset : Vec3<T>) -> DenFn3<T>{
-    Box::new(move |p|{
+pub fn mk_torus_y<T : Real>(r_big : T, r : T, offset : Vec3<T>) -> impl DenFn3<T>{
+    move |p : Vec3<T>|{
         let x = p - offset;
         let a = (x.x * x.x + x.z * x.z).sqrt() - r_big;
         a * a + x.y * x.y - r * r
-    })
+    }
 }
 
 
-pub fn mk_sphere_displacement<T : Real>(sphere : Sphere<T>, f : Box<Fn(Vec3<T>) -> T>) -> DenFn3<T>{
-    Box::new(move |x|{
+//TODO DenFn1 f
+pub fn mk_sphere_displacement<T : Real>(sphere : Sphere<T>, f : impl DenFn3<T>) -> impl DenFn3<T>{
+    move |x : Vec3<T>|{
         let dist = x - sphere.center;
         dot(dist,dist) - sphere.rad * sphere.rad * f(dist.normalize())
-    })
+    }
 }
 
 pub fn distance_point2_line2<T : Real>(point2 : Vec2<T>, line2 : Line2<T>) -> T{

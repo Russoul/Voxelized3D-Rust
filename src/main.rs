@@ -170,9 +170,9 @@ fn run(){
     let den2 = difference3(two_torus, mk_aabb(Vec3::new(0.0, 3.0, -4.0), Vec3::new(1.5,1.5,1.5)));
     let den3 = union3(den2, mk_sphere(Sphere{center : Vec3::new(0.0, 2.0, -4.0), rad : 1.0}));
     let den4 = union3(den3, mk_obb(Vec3::new(1.0, 1.0, 0.0), Vec3::new(1.0, -1.0, 0.0).normalize(), Vec3::new(1.0, 1.0, 0.5).normalize(), Vec3::new(1.0, 0.5, 0.2)));
+    let den5 = difference3(den4, mk_sphere(Sphere{center : Vec3::new(1.0, 1.5, 0.0), rad : 0.3}));
     //let den4 = union3(den3, mk_half_space_pos(Plane{point : Vec3::new(0.0, 2.0, -4.0), normal : Vec3::new(1.0, 1.0, 0.0).normalize()}));
     //let den = f;
-    //TODO implement DenFn differently, like noise library
     //construct_grid(&den4, Vec3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
 
     let test_sphere = Sphere{center : Vec3::new(2.7, 1.0, 0.0), rad : 2.4};
@@ -185,7 +185,7 @@ fn run(){
     let ts4 = difference3(ts3, ts22);
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
     //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
-    construct_grid(&den4, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
+    construct_grid(noise, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
 
 
     add_triangle_color(&mut renderer.render_triangles_pos_color, Triangle3{p1 : vec3![-0.2, 0.0, -1.0], p2 : vec3![0.2, 0.0, -1.0], p3 : vec3![0.0, 0.3, -1.0]}, red);
