@@ -15,6 +15,7 @@ pub trait Value: Copy + PartialEq + Debug  {
 impl<T: Copy + PartialEq + Debug> Value for T {}
 
 #[derive(Clone, Debug)]
+#[repr(C)]
 pub struct Mat<T : Value,N : Clone + Unsigned,M : Clone + Unsigned> where
     N : Mul<M>,
     Prod<N,M> : ArrayLength<T>{

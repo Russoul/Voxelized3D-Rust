@@ -10,12 +10,19 @@ extern crate rand;
 extern crate noise;
 extern crate num;
 extern crate glfw;
+extern crate image;
 
+#[cfg(feature = "vulkan")]
+extern crate vulkano;
+#[cfg(feature = "vulkan")]
+extern crate vulkano_shaders;
 
 //mod qef_bindings;
 
 use libc::*;
 use std::ffi::*;
+use std::vec::Vec as Vector;
+use std::sync::Arc;
 
 mod test;
 mod graphics;
@@ -26,6 +33,9 @@ mod util;
 mod math;
 #[macro_use]
 mod matrix;
+
+#[cfg(feature = "vulkan")]
+mod vulkan_raytracer;
 
 
 mod extraction;
@@ -185,17 +195,36 @@ fn run(){
     let ts4 = difference3(ts3, ts22);
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
     //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
-    construct_grid(noise, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
+    let mut triangles_for_rt = Vector::with_capacity(1000);
+    construct_grid(noise, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color, &mut triangles_for_rt);
 
 
     add_triangle_color(&mut renderer.render_triangles_pos_color, Triangle3{p1 : vec3![-0.2, 0.0, -1.0], p2 : vec3![0.2, 0.0, -1.0], p3 : vec3![0.0, 0.3, -1.0]}, red);
 
     add_grid3_pos_color(&mut renderer.render_lines_pos_color, Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
+    //println!("{:?}", img);
+    let mut tex = [0u32];
+    gl_active_texture(GL_TEXTURE0);
+    gl_gen_textures(1, &mut tex);
+    gl_bind_texture(GL_TEXTURE_2D, tex[0]);
+    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    renderer.render_triangles_texture_screen_pos_tex.data = tex[0];
 
-    renderer.run(|renderer, dt_ns| {
+    //gl_generate_mipmap(GL_TEXTURE_2D);
+
+
+
+    add_quad_pos_tex(&mut renderer.render_triangles_texture_screen_pos_tex, [vec3![0.0, 0.0, 0.0], vec3![800.0, 0.0, 0.0], vec3![800.0, 600.0, 0.0], vec3![0.0, 600.0, 0.0]], [vec2![0.0, 1.0], vec2![1.0, 1.0], vec2![1.0, 0.0], vec2![0.0, 0.0]]);
+
+
+    renderer.run(move |renderer, dt_ns| {
 
         handle_input(renderer.glfw.as_mut().unwrap(), renderer.window.as_mut().unwrap(), dt_ns, &mut renderer.camera);
+
+        let img = vulkan_raytracer::setup(def_width, def_height, &renderer.camera, &triangles_for_rt);
+        gl_tex_image_2d(GL_TEXTURE_2D, 0, GL_RGBA, def_width, def_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.as_slice());
 
         gl_enable(GL_DEPTH_TEST);
         gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -204,7 +233,6 @@ fn run(){
 }
 
 fn main(){
-
     run();
 }
 

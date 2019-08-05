@@ -542,7 +542,7 @@ fn find_minimizer(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point :
 
 //constructs grid: calculates hermite data and configuration for each cell
 //TODO generating triangles right in this function would benefit performance (no extra looping through cells)
-pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef, render_debug_lines : &mut RendererVertFragDef) -> HermiteGrid<f32>{
+pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef<()>, render_debug_lines : &mut RendererVertFragDef<()>, triangles_for_rt : &mut Vector<Triangle3<f32>>) -> HermiteGrid<f32>{
     let corners = corner_points();
     let edge_pairs = edge_pairs();
     let edge_table = edge_table();
@@ -742,6 +742,8 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
                             let normal = grid.get(x,y,z).hermite_data.get(&5).unwrap().normal;
                             add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : r, p3 : ru}, Vec3::new(1.0, 1.0, 0.0), normal);
                             add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : ru, p3 : u}, Vec3::new(1.0, 1.0, 0.0), normal);
+                            triangles_for_rt.push(Triangle3{p1 : t, p2 : r, p3 : ru});
+                            triangles_for_rt.push(Triangle3{p1 : t, p2 : ru, p3 : u});
                         },
                         6 => {
                             let f = load_cell_cached(&mut grid, x,y,z+1, &mut cache).get(&4).unwrap().clone();
@@ -753,6 +755,8 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
                             let normal = grid.get(x,y,z).hermite_data.get(&6).unwrap().normal;
                             add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : f, p3 : fu}, Vec3::new(1.0, 1.0, 0.0), normal);
                             add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : fu, p3 : u}, Vec3::new(1.0, 1.0, 0.0), normal);
+                            triangles_for_rt.push(Triangle3{p1 : t, p2 : f, p3 : fu});
+                            triangles_for_rt.push(Triangle3{p1 : t, p2 : fu, p3 : u});
                         },
                         10 => {
                             let r_ = load_cell_cached(&mut grid, x+1,y,z, &mut cache);
@@ -767,6 +771,8 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
 
                             add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : rf, p3 : r}, Vec3::new(1.0, 1.0, 0.0), normal);
                             add_triangle_pos_color_normal(render_tr_light, Triangle3{p1 : t, p2 : f, p3 : rf}, Vec3::new(1.0, 1.0, 0.0), normal);
+                            triangles_for_rt.push(Triangle3{p1 : t, p2 : rf, p3 : r});
+                            triangles_for_rt.push(Triangle3{p1 : t, p2 : f, p3 : rf});
                         },
                         _ => ()
                     }

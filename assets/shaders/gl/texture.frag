@@ -15,6 +15,7 @@ void main()
     c.y *= extraColor.y;
     c.z *= extraColor.z;
 
+
     if(c.a < 0.1)
         discard;
 

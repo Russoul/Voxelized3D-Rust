@@ -1,7 +1,7 @@
 use alga;
 use std;
 use noise::{NoiseFn, Perlin};
-use alga::general::Real;
+use alga::general::{Real, Identity, Additive};
 use num;
 use std::ops::{Mul, Add, Neg};
 use typenum::{Prod, Unsigned, Minimum, Min, U1, U2, U3, U4};
@@ -11,8 +11,10 @@ use alga::general::{MultiplicativeMonoid, AdditiveMonoid};
 use std::fmt::Debug;
 use std::convert::identity;
 use generic_array::GenericArray;
+use renderer::Cam;
 
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Triangle2<T : Value>{
     pub p1: Vec2<T>,
     pub p2: Vec2<T>,
@@ -20,25 +22,35 @@ pub struct Triangle2<T : Value>{
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Triangle3<T : Value>{
     pub p1: Vec3<T>,
     pub p2: Vec3<T>,
     pub p3: Vec3<T>,
 }
 
+impl<T : Value + Identity<Additive>> Triangle3<T>{
+    pub fn empty() -> Triangle3<T>{
+        Triangle3{p1:Vec3::empty(), p2:Vec3::empty(), p3:Vec3::empty()}
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Line2<T : Value> {
     pub start : Vec2<T>,
     pub end : Vec2<T>,
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Line3<T : Value> {
     pub start : Vec3<T>,
     pub end : Vec3<T>,
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Plane<T : Value> {
     pub point : Vec3<T>,
     pub normal : Vec3<T>,
@@ -46,6 +58,7 @@ pub struct Plane<T : Value> {
 
 //axis aligned
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Square2<T : Value>{
     pub center : Vec2<T>,
     pub extent : T,
@@ -53,6 +66,7 @@ pub struct Square2<T : Value>{
 
 //axis aligned
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Cube<T : Value>{
     pub center : Vec3<T>,
     pub extent : T,
@@ -69,12 +83,18 @@ impl<T : Real> Cube<T>{
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Sphere<T : Value>{
     pub center : Vec3<T>,
     pub rad : T,
 }
 
-
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct Ray<T : Value>{
+    pub start : Vec3<T>,
+    pub dir : Vec3<T>
+}
 
 pub trait DenFn2<T : Value> : Fn(Vec2<T>) -> T + Copy{}
 pub trait DenFn3<T : Value> : Fn(Vec3<T>) -> T + Copy{}
@@ -338,15 +358,15 @@ pub fn rot_mat3<T : Real>(u : Vec3<T>, rad : T) -> Mat3<T>{
 }
 
 //column-major
-pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> [f32;16]{
-    [2.0 / (right - left), 0.0, 0.0, -(right + left) / (right - left),
+pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Mat4<f32>{
+    Mat4::new(2.0 / (right - left), 0.0, 0.0, -(right + left) / (right - left),
      0.0, 2.0 / (top - bottom), 0.0, -(top + bottom) / (top - bottom),
      0.0, 0.0, -2.0 / (far - near), -(far + near) / (far - near),
      0.0, 0.0, 0.0, 1.0
-    ]
+    )
 }
 
-//column-major
+//row-major
 pub fn perspective(fovy : f32, aspect : f32, near : f32, far : f32) -> Mat4<f32>{
     let top = near * (std::f32::consts::PI / 180.0 * fovy / 2.0).tan();
     let bottom = -top;
@@ -472,4 +492,15 @@ pub fn qr_eigen<A : Value + Mul + Add + MultiplicativeMonoid + AdditiveMonoid + 
     }
 
     (e, q)
+}
+
+pub fn bounding_rays(cam : &Cam, fovy : f32, aspect : f32, z_near : f32) -> [Ray<f32>;4]{
+    let l = f32::tan(fovy * std::f32::consts::PI / 360.0) * z_near * aspect;
+    let q = f32::tan(fovy * std::f32::consts::PI / 360.0) * z_near;
+    let right = cross(cam.look, cam.up);
+    let norm = f32::sqrt(l*l + q*q + z_near * z_near);
+    [   Ray{start:cam.pos, dir:(-right * l + cam.up * q + cam.look * z_near) * (1.0 / norm)},
+        Ray{start:cam.pos, dir:(-right * l - cam.up * q + cam.look * z_near) * (1.0 / norm)},
+        Ray{start:cam.pos, dir:(right * l - cam.up * q + cam.look * z_near) * (1.0 / norm)},
+        Ray{start:cam.pos, dir:(right * l + cam.up * q + cam.look * z_near) * (1.0 / norm)}]
 }

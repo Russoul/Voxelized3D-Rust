@@ -21,7 +21,8 @@ pub struct WindowInfo{
 pub enum GlfwWindow{}
 pub enum GlfwMonitor{}
 
-
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct Program{
     pub id: usize,
     
@@ -195,7 +196,48 @@ extern {
     fn glUseProgram(id: usize);
     fn glGetIntegerv(param: usize, out: *mut isize);
     fn glGetError() -> usize;
+    fn glActiveTexture(tex : usize);
+    fn glGenTextures(count : u32, textures : *mut u32);
+    fn glBindTexture(ty : usize, tex : u32);
+    fn glTexParameteri(ty : usize, par : usize, val : usize);
+    fn glTexImage2D(target : usize, level : i32, internal_format : usize, w : u32, h : u32, border : i32, format : usize, ty : usize, data : *const c_void);
+    fn glGenerateMipmap(target : usize);
+    fn glDebugMessageCallback(source : usize, ty : usize, id : u32, severity : usize, size : u32, msg : *const c_char, par : *const c_void);
+}
 
+
+pub fn gl_generate_mipmap(target : usize){
+    unsafe{
+        glGenerateMipmap(target);
+    }
+}
+
+pub fn gl_tex_image_2d<T>(target : usize, level : i32, internal_format : usize, w : u32, h : u32, border : i32, format : usize, ty : usize, data : &[T]){
+    unsafe{
+        glTexImage2D(target, level, internal_format, w, h, border, format, ty, std::mem::transmute(data.as_ptr()));
+    }
+}
+
+pub fn gl_tex_parameteri(ty : usize, par : usize, val : usize){
+    unsafe{
+        glTexParameteri(ty, par, val);
+    }
+}
+
+pub fn gl_gen_textures(count : u32, textures : &mut [u32]){
+    unsafe{
+        glGenTextures(count, std::mem::transmute(textures.as_mut_ptr()));
+    }
+}
+
+pub fn gl_bind_texture(ty : usize, tex : u32){
+    unsafe{
+        glBindTexture(ty, tex);
+    }
+}
+
+pub fn gl_active_texture(tex : usize){
+    unsafe{glActiveTexture(tex)};
 }
 
 pub fn gl_enable(val : usize){

@@ -5,6 +5,9 @@ authors = ["russoul <russoulmc@gmail.com>"]
 build = "build.rs"
 links = "rsutil"
 
+[features]
+vulkan = ["vulkano", "vulkano-shaders"]
+
 [dependencies]
 libc = "0.2.0"
 generic-array = "0.9.0"
@@ -16,6 +19,9 @@ rand = "0.4"
 noise = "0.5.1"
 num = "0.1.42"
 glfw = "*"
+vulkano = {version = "0.13.0", optional = true}
+vulkano-shaders = {version = "0.13.0", optional = true}
+image = "0.21"
 
 [build-dependencies]
 cc = "1.0"
