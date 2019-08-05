@@ -1,5 +1,4 @@
 
-#include <stdlib.h>
 #include <stdio.h>
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
@@ -89,20 +88,3 @@ char* readFile(char* filename){
    gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
  }
 
-
-
-char* c_double_to_string(double num, int buf_size){ 
-  char *output = malloc(buf_size);
-
-  snprintf(output, buf_size, "%f", num);
-
-  return output;
-}
-
-char* c_int_to_string(int num, int buf_size){
-  char *output = malloc(buf_size);
-
-  snprintf(output, buf_size, "%i", num);
-
-  return output;
-}
