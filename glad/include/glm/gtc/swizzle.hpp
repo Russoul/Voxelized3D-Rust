@@ -40,7 +40,7 @@
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtc/type_precision.hpp"
+#include "type_precision.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
 #	pragma message("GLM: GLM_GTC_swizzle extension included")

@@ -20,71 +20,51 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 ///
-/// @ref gtx_spline
-/// @file glm/gtx/spline.hpp
-/// @date 2007-01-25 / 2011-06-07
+/// @ref gtx_string_cast
+/// @file glm/gtx/string_cast.hpp
+/// @date 2008-04-26 / 2011-06-07
 /// @author Christophe Riccio
 ///
 /// @see core (dependence)
+/// @see gtc_half_float (dependence)
+/// @see gtx_integer (dependence)
+/// @see gtx_quaternion (dependence)
 ///
-/// @defgroup gtx_spline GLM_GTX_spline: Spline
+/// @defgroup gtx_string_cast GLM_GTX_string_cast: String cast
 /// @ingroup gtx
 /// 
-/// @brief Spline functions
+/// @brief Setup strings for GLM type values
 /// 
-/// <glm/gtx/spline.hpp> need to be included to use these functionalities.
+/// <glm/gtx/string_cast.hpp> need to be included to use these functionalities.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GLM_GTX_spline
-#define GLM_GTX_spline GLM_VERSION
+#ifndef GLM_GTX_string_cast
+#define GLM_GTX_string_cast GLM_VERSION
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/optimum_pow.hpp"
+#include "../gtc/half_float.hpp"
+#include "integer.hpp"
+#include "quaternion.hpp"
+#include <string>
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
-#	pragma message("GLM: GLM_GTX_spline extension included")
+#	pragma message("GLM: GLM_GTX_string_cast extension included")
 #endif
 
 namespace glm
 {
-	/// @addtogroup gtx_spline
+	/// @addtogroup gtx_string_cast
 	/// @{
 
-	//! Return a point from a catmull rom curve.
-	//! From GLM_GTX_spline extension.
+	/// Create a string from a GLM type value.
+	/// From GLM_GTX_string_cast extension.
 	template <typename genType> 
-	genType catmullRom(
-		genType const & v1, 
-		genType const & v2, 
-		genType const & v3, 
-		genType const & v4, 
-		typename genType::value_type const & s);
-		
-	//! Return a point from a hermite curve.
-	//! From GLM_GTX_spline extension.
-    template <typename genType> 
-	genType hermite(
-		genType const & v1, 
-		genType const & t1, 
-		genType const & v2, 
-		genType const & t2, 
-		typename genType::value_type const & s);
-		
-    //! Return a point from a cubic curve. 
-	//! From GLM_GTX_spline extension.
-	template <typename genType> 
-	genType cubic(
-		genType const & v1, 
-		genType const & v2, 
-		genType const & v3, 
-		genType const & v4, 
-		typename genType::value_type const & s);
+	std::string to_string(genType const & x);
 
 	/// @}
 }//namespace glm
 
-#include "spline.inl"
+#include "string_cast.inl"
 
-#endif//GLM_GTX_spline
-
+#endif//GLM_GTX_string_cast

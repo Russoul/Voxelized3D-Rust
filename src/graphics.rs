@@ -117,7 +117,7 @@ pub struct GlfwVidMode{
 //-framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
 //#[link(name = "OpenGL", kind = "framework")]
 #[link(name = "glfw3")]
-#[link(name = "rsutil")]
+#[link(name = "glad")]
 extern {
     fn glfwInit();
     fn glfwWindowHint(_enum : c_uint, _val : c_uint);
@@ -128,7 +128,6 @@ extern {
                         ptr2 : *mut c_void) -> *mut GlfwWindow;
     fn glfwTerminate();
     fn glfwMakeContextCurrent(window : *mut GlfwWindow);
-    fn _gladLoadGLLoader();
     fn glViewport(x : c_uint, y : c_uint, w : c_uint, h : c_uint);
     fn glfwSetFramebufferSizeCallback(
         win : *mut GlfwWindow,
@@ -203,8 +202,15 @@ extern {
     fn glTexImage2D(target : usize, level : i32, internal_format : usize, w : u32, h : u32, border : i32, format : usize, ty : usize, data : *const c_void);
     fn glGenerateMipmap(target : usize);
     fn glDebugMessageCallback(source : usize, ty : usize, id : u32, severity : usize, size : u32, msg : *const c_char, par : *const c_void);
+    fn glfwGetProcAddress(pname : *const c_char) -> *const c_void;
+    fn gladLoadGLLoader(f : unsafe extern fn(*const c_char) -> *const c_void) -> i32;
 }
 
+pub fn load_glad_using_glfw(){
+    unsafe{
+        gladLoadGLLoader(glfwGetProcAddress);
+    }
+}
 
 pub fn gl_generate_mipmap(target : usize){
     unsafe{
@@ -462,11 +468,6 @@ pub fn glfw_get_primary_monitor() -> *mut GlfwMonitor{
     }
 }
 
-pub fn glad_load_gl_loader(){
-    unsafe{
-        _gladLoadGLLoader();
-    }
-}
 
 pub fn glfw_init(){
     unsafe{

@@ -42,9 +42,9 @@
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/epsilon.hpp"
-#include "../gtx/quaternion.hpp"
-#include "../gtx/rotate_vector.hpp"
+#include "epsilon.hpp"
+#include "quaternion.hpp"
+#include "rotate_vector.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
 #	pragma message("GLM: GLM_GTX_vector_angle extension included")

@@ -20,51 +20,57 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 ///
-/// @ref gtx_string_cast
-/// @file glm/gtx/string_cast.hpp
-/// @date 2008-04-26 / 2011-06-07
+/// @ref gtx_normalize_dot
+/// @file glm/gtx/normalize_dot.hpp
+/// @date 2007-09-28 / 2011-06-07
 /// @author Christophe Riccio
 ///
 /// @see core (dependence)
-/// @see gtc_half_float (dependence)
-/// @see gtx_integer (dependence)
-/// @see gtx_quaternion (dependence)
+/// @see gtx_fast_square_root (dependence)
 ///
-/// @defgroup gtx_string_cast GLM_GTX_string_cast: String cast
+/// @defgroup gtx_normalize_dot GLM_GTX_normalize_dot: Normalize dot product
 /// @ingroup gtx
 /// 
-/// @brief Setup strings for GLM type values
+/// @brief Dot product of vectors that need to be normalize with a single square root.
 /// 
-/// <glm/gtx/string_cast.hpp> need to be included to use these functionalities.
+/// <glm/gtx/normalized_dot.hpp> need to be included to use these functionalities.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GLM_GTX_string_cast
-#define GLM_GTX_string_cast GLM_VERSION
+#ifndef GLM_GTX_normalize_dot
+#define GLM_GTX_normalize_dot GLM_VERSION
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtc/half_float.hpp"
-#include "../gtx/integer.hpp"
-#include "../gtx/quaternion.hpp"
-#include <string>
+#include "fast_square_root.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
-#	pragma message("GLM: GLM_GTX_string_cast extension included")
+#	pragma message("GLM: GLM_GTX_normalize_dot extension included")
 #endif
 
 namespace glm
 {
-	/// @addtogroup gtx_string_cast
+	/// @addtogroup gtx_normalize_dot
 	/// @{
 
-	/// Create a string from a GLM type value.
-	/// From GLM_GTX_string_cast extension.
+	//! Normalize parameters and returns the dot product of x and y.
+	//! It's faster that dot(normalize(x), normalize(y)).
+	//! From GLM_GTX_normalize_dot extension.
 	template <typename genType> 
-	std::string to_string(genType const & x);
+	typename genType::value_type normalizeDot(
+		genType const & x, 
+		genType const & y);
+
+	//! Normalize parameters and returns the dot product of x and y.
+	//! Faster that dot(fastNormalize(x), fastNormalize(y)).
+	//! From GLM_GTX_normalize_dot extension.
+	template <typename genType> 
+	typename genType::value_type fastNormalizeDot(
+		genType const & x, 
+		genType const & y);
 
 	/// @}
 }//namespace glm
 
-#include "string_cast.inl"
+#include "normalize_dot.inl"
 
-#endif//GLM_GTX_string_cast
+#endif//GLM_GTX_normalize_dot

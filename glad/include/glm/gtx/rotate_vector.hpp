@@ -41,7 +41,7 @@
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/transform.hpp"
+#include "transform.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
 #	pragma message("GLM: GLM_GTX_rotate_vector extension included")

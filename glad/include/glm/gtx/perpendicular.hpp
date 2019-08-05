@@ -20,57 +20,48 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 ///
-/// @ref gtx_gradient_paint
-/// @file glm/gtx/gradient_paint.hpp
-/// @date 2009-03-06 / 2011-06-07
+/// @ref gtx_perpendicular
+/// @file glm/gtx/perpendicular.hpp
+/// @date 2005-12-21 / 2011-06-07
 /// @author Christophe Riccio
 ///
 /// @see core (dependence)
-/// @see gtx_optimum_pow (dependence)
+/// @see gtx_projection (dependence)
 ///
-/// @defgroup gtx_gradient_paint GLM_GTX_gradient_paint: Procedural gradient color
+/// @defgroup gtx_perpendicular GLM_GTX_perpendicular: Perpendicular
 /// @ingroup gtx
 /// 
-/// @brief Functions that return the color of procedural gradient for specific coordinates.
-/// <glm/gtx/gradient_paint.hpp> need to be included to use these functionalities.
+/// @brief Perpendicular of a vector from other one
+/// 
+/// <glm/gtx/perpendicular.hpp> need to be included to use these functionalities.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GLM_GTX_gradient_paint
-#define GLM_GTX_gradient_paint GLM_VERSION
+#ifndef GLM_GTX_perpendicular
+#define GLM_GTX_perpendicular GLM_VERSION
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/optimum_pow.hpp"
+#include "projection.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
-#	pragma message("GLM: GLM_GTX_gradient_paint extension included")
+#	pragma message("GLM: GLM_GTX_perpendicular extension included")
 #endif
 
 namespace glm
 {
-	/// @addtogroup gtx_gradient_paint
+	/// @addtogroup gtx_perpendicular
 	/// @{
 
-	/// Return a color from a radial gradient.
-	/// @see - gtx_gradient_paint
-	template <typename valType>
-	valType radialGradient(
-		detail::tvec2<valType> const & Center,
-		valType const & Radius,
-		detail::tvec2<valType> const & Focal,
-		detail::tvec2<valType> const & Position);
-
-	/// Return a color from a linear gradient.
-	/// @see - gtx_gradient_paint
-	template <typename valType>
-	valType linearGradient(
-		detail::tvec2<valType> const & Point0,
-		detail::tvec2<valType> const & Point1,
-		detail::tvec2<valType> const & Position);
+	//! Projects x a perpendicular axis of Normal.
+	//! From GLM_GTX_perpendicular extension.
+	template <typename vecType> 
+	vecType perp(
+		vecType const & x, 
+		vecType const & Normal);
 
 	/// @}
-}// namespace glm
+}//namespace glm
 
-#include "gradient_paint.inl"
+#include "perpendicular.inl"
 
-#endif//GLM_GTX_gradient_paint
+#endif//GLM_GTX_perpendicular

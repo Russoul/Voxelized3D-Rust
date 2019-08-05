@@ -45,8 +45,8 @@
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtc/half_float.hpp"
-#include "../gtc/quaternion.hpp"
+#include "half_float.hpp"
+#include "quaternion.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
 #	pragma message("GLM: GLM_GTC_type_precision extension included")

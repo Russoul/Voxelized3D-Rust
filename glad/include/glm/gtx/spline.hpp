@@ -20,57 +20,71 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 ///
-/// @ref gtx_normalize_dot
-/// @file glm/gtx/normalize_dot.hpp
-/// @date 2007-09-28 / 2011-06-07
+/// @ref gtx_spline
+/// @file glm/gtx/spline.hpp
+/// @date 2007-01-25 / 2011-06-07
 /// @author Christophe Riccio
 ///
 /// @see core (dependence)
-/// @see gtx_fast_square_root (dependence)
 ///
-/// @defgroup gtx_normalize_dot GLM_GTX_normalize_dot: Normalize dot product
+/// @defgroup gtx_spline GLM_GTX_spline: Spline
 /// @ingroup gtx
 /// 
-/// @brief Dot product of vectors that need to be normalize with a single square root.
+/// @brief Spline functions
 /// 
-/// <glm/gtx/normalized_dot.hpp> need to be included to use these functionalities.
+/// <glm/gtx/spline.hpp> need to be included to use these functionalities.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GLM_GTX_normalize_dot
-#define GLM_GTX_normalize_dot GLM_VERSION
+#ifndef GLM_GTX_spline
+#define GLM_GTX_spline GLM_VERSION
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/fast_square_root.hpp"
+#include "optimum_pow.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
-#	pragma message("GLM: GLM_GTX_normalize_dot extension included")
+#	pragma message("GLM: GLM_GTX_spline extension included")
 #endif
 
 namespace glm
 {
-	/// @addtogroup gtx_normalize_dot
+	/// @addtogroup gtx_spline
 	/// @{
 
-	//! Normalize parameters and returns the dot product of x and y.
-	//! It's faster that dot(normalize(x), normalize(y)).
-	//! From GLM_GTX_normalize_dot extension.
+	//! Return a point from a catmull rom curve.
+	//! From GLM_GTX_spline extension.
 	template <typename genType> 
-	typename genType::value_type normalizeDot(
-		genType const & x, 
-		genType const & y);
-
-	//! Normalize parameters and returns the dot product of x and y.
-	//! Faster that dot(fastNormalize(x), fastNormalize(y)).
-	//! From GLM_GTX_normalize_dot extension.
+	genType catmullRom(
+		genType const & v1, 
+		genType const & v2, 
+		genType const & v3, 
+		genType const & v4, 
+		typename genType::value_type const & s);
+		
+	//! Return a point from a hermite curve.
+	//! From GLM_GTX_spline extension.
+    template <typename genType> 
+	genType hermite(
+		genType const & v1, 
+		genType const & t1, 
+		genType const & v2, 
+		genType const & t2, 
+		typename genType::value_type const & s);
+		
+    //! Return a point from a cubic curve. 
+	//! From GLM_GTX_spline extension.
 	template <typename genType> 
-	typename genType::value_type fastNormalizeDot(
-		genType const & x, 
-		genType const & y);
+	genType cubic(
+		genType const & v1, 
+		genType const & v2, 
+		genType const & v3, 
+		genType const & v4, 
+		typename genType::value_type const & s);
 
 	/// @}
 }//namespace glm
 
-#include "normalize_dot.inl"
+#include "spline.inl"
 
-#endif//GLM_GTX_normalize_dot
+#endif//GLM_GTX_spline
+

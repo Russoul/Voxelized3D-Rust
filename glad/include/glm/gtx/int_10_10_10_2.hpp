@@ -20,48 +20,45 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 ///
-/// @ref gtx_perpendicular
-/// @file glm/gtx/perpendicular.hpp
-/// @date 2005-12-21 / 2011-06-07
+/// @ref gtx_int_10_10_10_2
+/// @file glm/gtx/int_10_10_10_2.hpp
+/// @date 2010-07-07 / 2011-06-07
 /// @author Christophe Riccio
 ///
 /// @see core (dependence)
-/// @see gtx_projection (dependence)
+/// @see gtx_raw_data (dependence)
 ///
-/// @defgroup gtx_perpendicular GLM_GTX_perpendicular: Perpendicular
+/// @defgroup gtx_int_10_10_10_2 GLM_GTX_int_10_10_10_2: Packed integer
 /// @ingroup gtx
 /// 
-/// @brief Perpendicular of a vector from other one
+/// @brief Pack vector to 1010102 integers. Storage only.
 /// 
-/// <glm/gtx/perpendicular.hpp> need to be included to use these functionalities.
+/// <glm/gtx/int_10_10_10_2.hpp> need to be included to use these functionalities.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GLM_GTX_perpendicular
-#define GLM_GTX_perpendicular GLM_VERSION
+#ifndef GLM_GTX_int_10_10_10_2
+#define GLM_GTX_int_10_10_10_2 GLM_VERSION
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/projection.hpp"
+#include "raw_data.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
-#	pragma message("GLM: GLM_GTX_perpendicular extension included")
+#	pragma message("GLM: GLM_GTX_int_10_10_10_2 extension included")
 #endif
 
 namespace glm
 {
-	/// @addtogroup gtx_perpendicular
+	/// @addtogroup gtx_int_10_10_10_2
 	/// @{
 
-	//! Projects x a perpendicular axis of Normal.
-	//! From GLM_GTX_perpendicular extension.
-	template <typename vecType> 
-	vecType perp(
-		vecType const & x, 
-		vecType const & Normal);
+	//! From GLM_GTX_int_10_10_10_2 extension.
+	//! Cast a vec4 to an u_10_10_10_2.
+	dword uint10_10_10_2_cast(glm::vec4 const & v);
 
 	/// @}
 }//namespace glm
 
-#include "perpendicular.inl"
+#include "int_10_10_10_2.inl"
 
-#endif//GLM_GTX_perpendicular
+#endif//GLM_GTX_int_10_10_10_2

@@ -20,45 +20,57 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 ///
-/// @ref gtx_int_10_10_10_2
-/// @file glm/gtx/int_10_10_10_2.hpp
-/// @date 2010-07-07 / 2011-06-07
+/// @ref gtx_gradient_paint
+/// @file glm/gtx/gradient_paint.hpp
+/// @date 2009-03-06 / 2011-06-07
 /// @author Christophe Riccio
 ///
 /// @see core (dependence)
-/// @see gtx_raw_data (dependence)
+/// @see gtx_optimum_pow (dependence)
 ///
-/// @defgroup gtx_int_10_10_10_2 GLM_GTX_int_10_10_10_2: Packed integer
+/// @defgroup gtx_gradient_paint GLM_GTX_gradient_paint: Procedural gradient color
 /// @ingroup gtx
 /// 
-/// @brief Pack vector to 1010102 integers. Storage only.
-/// 
-/// <glm/gtx/int_10_10_10_2.hpp> need to be included to use these functionalities.
+/// @brief Functions that return the color of procedural gradient for specific coordinates.
+/// <glm/gtx/gradient_paint.hpp> need to be included to use these functionalities.
 ///////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GLM_GTX_int_10_10_10_2
-#define GLM_GTX_int_10_10_10_2 GLM_VERSION
+#ifndef GLM_GTX_gradient_paint
+#define GLM_GTX_gradient_paint GLM_VERSION
 
 // Dependency:
 #include "../glm.hpp"
-#include "../gtx/raw_data.hpp"
+#include "optimum_pow.hpp"
 
 #if(defined(GLM_MESSAGES) && !defined(glm_ext))
-#	pragma message("GLM: GLM_GTX_int_10_10_10_2 extension included")
+#	pragma message("GLM: GLM_GTX_gradient_paint extension included")
 #endif
 
 namespace glm
 {
-	/// @addtogroup gtx_int_10_10_10_2
+	/// @addtogroup gtx_gradient_paint
 	/// @{
 
-	//! From GLM_GTX_int_10_10_10_2 extension.
-	//! Cast a vec4 to an u_10_10_10_2.
-	dword uint10_10_10_2_cast(glm::vec4 const & v);
+	/// Return a color from a radial gradient.
+	/// @see - gtx_gradient_paint
+	template <typename valType>
+	valType radialGradient(
+		detail::tvec2<valType> const & Center,
+		valType const & Radius,
+		detail::tvec2<valType> const & Focal,
+		detail::tvec2<valType> const & Position);
+
+	/// Return a color from a linear gradient.
+	/// @see - gtx_gradient_paint
+	template <typename valType>
+	valType linearGradient(
+		detail::tvec2<valType> const & Point0,
+		detail::tvec2<valType> const & Point1,
+		detail::tvec2<valType> const & Position);
 
 	/// @}
-}//namespace glm
+}// namespace glm
 
-#include "int_10_10_10_2.inl"
+#include "gradient_paint.inl"
 
-#endif//GLM_GTX_int_10_10_10_2
+#endif//GLM_GTX_gradient_paint

@@ -158,7 +158,7 @@ impl Renderer{
 
         // Make the window's context current
         window.make_current();
-        glad_load_gl_loader();
+        load_glad_using_glfw();
         window.set_key_polling(true);
         window.set_framebuffer_size_polling(true);
 
