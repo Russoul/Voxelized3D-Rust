@@ -11,6 +11,7 @@ extern crate noise;
 extern crate num;
 extern crate glfw;
 extern crate image;
+extern crate glad_gl;
 
 #[cfg(feature = "vulkan")]
 extern crate vulkano;
@@ -62,6 +63,7 @@ use rand::distributions::{Sample, Range};
 use typenum::{Cube as _, Prod, Unsigned};
 use generic_array::*;
 use matrix::*;
+use glad_gl::gl;
 
 
 fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, camera : &mut Cam){
@@ -205,11 +207,11 @@ fn run(){
 
     //println!("{:?}", img);
     let mut tex = [0u32];
-    gl_active_texture(GL_TEXTURE0);
+    gl_active_texture(gl::GL_TEXTURE0);
     gl_gen_textures(1, &mut tex);
-    gl_bind_texture(GL_TEXTURE_2D, tex[0]);
-    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    gl_bind_texture(gl::GL_TEXTURE_2D, tex[0]);
+    gl_tex_parameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
+    gl_tex_parameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_LINEAR);
     renderer.render_triangles_texture_screen_pos_tex.data = tex[0];
 
     //gl_generate_mipmap(GL_TEXTURE_2D);
@@ -224,10 +226,10 @@ fn run(){
         handle_input(renderer.glfw.as_mut().unwrap(), renderer.window.as_mut().unwrap(), dt_ns, &mut renderer.camera);
 
         let img = vulkan_raytracer::setup(def_width, def_height, &renderer.camera, &triangles_for_rt);
-        gl_tex_image_2d(GL_TEXTURE_2D, 0, GL_RGBA, def_width, def_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.as_slice());
+        gl_tex_image_2d(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, def_width, def_height, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, img.as_slice());
 
-        gl_enable(GL_DEPTH_TEST);
-        gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        gl_enable(gl::GL_DEPTH_TEST);
+        gl_clear(gl::GL_COLOR_BUFFER_BIT | gl::GL_DEPTH_BUFFER_BIT);
         gl_clear_color(0.3, 0.2, 0.6, 1.0);
     });
 }

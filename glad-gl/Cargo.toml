@@ -1,0 +1,6 @@
+[package]
+name = "glad-gl"
+version = "2.0.0-beta"
+authors = ["David Herberth <github@dav1d.de>"]
+
+[features]

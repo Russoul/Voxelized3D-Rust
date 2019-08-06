@@ -14,6 +14,8 @@ use typenum::{U2,U3,U4,U5,U6};
 use glfw::{Action, Context, Key, Glfw, WindowHint};
 use time::precise_time_ns;
 use std::fmt::Display;
+use glad_gl::gl;
+use std::ptr::null;
 
 fn load_shaders_vf() -> HashMap<String, Program>{
     let dir : &str = "./assets/shaders/gl/";
@@ -53,7 +55,7 @@ fn load_shaders_vf() -> HashMap<String, Program>{
 }
 
 pub trait RendererVertFrag{
-    fn render_mode       (&self) -> usize;
+    fn render_mode       (&self) -> u32;
     fn shader_name       (&self) -> String;
     fn set_attrib_ptrs   (&mut self);
     fn construct         (&mut self) -> bool;
@@ -65,15 +67,15 @@ pub trait RendererVertFrag{
 
 
 pub struct RendererVertFragDef<Data>{
-    pub vertex_size: usize,
+    pub vertex_size: u32,
     pub vertex_pool: Vector<f32>,
     pub index_pool: Vector<u32>,
     pub vertex_count: u32,
-    pub vbo: usize,
-    pub vao: usize,
-    pub ebo: usize,
+    pub vbo: u32,
+    pub vao: u32,
+    pub ebo: u32,
     pub constructed: bool,
-    pub render_mode: usize,
+    pub render_mode: u32,
     pub shader_name: String,
     pub set_attrib_ptrs: fn(&mut RendererVertFragDef<Data>),
     pub data : Data,
@@ -118,10 +120,10 @@ pub struct Renderer{
 impl Renderer{
 
     pub fn new(camera : Cam) -> Renderer{
-        Renderer{render_triangles_pos_color : RendererVertFragDef::new(VERTEX_SIZE_POS_COLOR, set_attrib_ptrs_pos_color, GL_TRIANGLES, "color", (), None),
-                 render_lines_pos_color : RendererVertFragDef::new(VERTEX_SIZE_POS_COLOR, set_attrib_ptrs_pos_color, GL_LINES, "color", (), None),
-                 render_triangles_lighting_pos_color_normal : RendererVertFragDef::new(VERTEX_SIZE_POS_COLOR_NORMAL, set_attrib_ptrs_pos_color_normal, GL_TRIANGLES, "lighting", (), None),
-                 render_triangles_texture_screen_pos_tex: RendererVertFragDef::new(VERTEX_SIZE_POS_TEX, set_attrib_ptrs_pos_tex, GL_TRIANGLES, "texture", 0, Some(pre_render_pos_tex)),
+        Renderer{render_triangles_pos_color : RendererVertFragDef::new(VERTEX_SIZE_POS_COLOR, set_attrib_ptrs_pos_color, gl::GL_TRIANGLES, "color", (), None),
+                 render_lines_pos_color : RendererVertFragDef::new(VERTEX_SIZE_POS_COLOR, set_attrib_ptrs_pos_color, gl::GL_LINES, "color", (), None),
+                 render_triangles_lighting_pos_color_normal : RendererVertFragDef::new(VERTEX_SIZE_POS_COLOR_NORMAL, set_attrib_ptrs_pos_color_normal, gl::GL_TRIANGLES, "lighting", (), None),
+                 render_triangles_texture_screen_pos_tex: RendererVertFragDef::new(VERTEX_SIZE_POS_TEX, set_attrib_ptrs_pos_tex, gl::GL_TRIANGLES, "texture", 0, Some(pre_render_pos_tex)),
                  glfw : None, window : None, events : None, frame_buffer_size_callback : None,
                  shaders : HashMap::new(), camera, last_frame_nt : 0}
     }
@@ -158,7 +160,7 @@ impl Renderer{
 
         // Make the window's context current
         window.make_current();
-        load_glad_using_glfw();
+        gl::load(|e| glfw.get_proc_address_raw(e) as *const std::os::raw::c_void);
         window.set_key_polling(true);
         window.set_framebuffer_size_polling(true);
 
@@ -255,7 +257,7 @@ impl Renderer{
 
             let shader_tex = self.get_shaders().get("texture").unwrap().clone();
             shader_tex.enable();
-            gl_bind_texture(GL_TEXTURE_2D, self.render_triangles_texture_screen_pos_tex.data);
+            gl_bind_texture(gl::GL_TEXTURE_2D, self.render_triangles_texture_screen_pos_tex.data);
             shader_tex.set_float4x4("P", false, ortho_mat.as_slice());
             shader_tex.set_float4x4("V", true, id.as_slice());
 
@@ -298,54 +300,54 @@ impl Renderer{
 }
 
 pub fn pre_render_pos_tex(r : &mut RendererVertFragDef<u32>){
-    gl_active_texture(GL_TEXTURE0);
+    gl_active_texture(gl::GL_TEXTURE0);
     (r.get_program)().set_int("textureID", 0);
     (r.get_program)().set_float3("extraColor", 1.0, 1.0, 1.0);
 }
 
-pub const VERTEX_SIZE_POS_COLOR: usize = 6;
-pub const VERTEX_SIZE_POS_COLOR_NORMAL: usize = 9;
-pub const VERTEX_SIZE_POS_TEX:usize = 5;
+pub const VERTEX_SIZE_POS_COLOR : u32 = 6;
+pub const VERTEX_SIZE_POS_COLOR_NORMAL : u32 = 9;
+pub const VERTEX_SIZE_POS_TEX : u32 = 5;
 
 pub fn set_attrib_ptrs_pos_color<Data>(_:&mut RendererVertFragDef<Data>){
-    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR * 4,
+    gl_vertex_attrib_pointer(0, 3, gl::GL_FLOAT, false, VERTEX_SIZE_POS_COLOR * 4,
                              0);
     gl_enable_vertex_attrib_array(0);
 
-    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR * 4,
+    gl_vertex_attrib_pointer(1, 3, gl::GL_FLOAT, false, VERTEX_SIZE_POS_COLOR * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
 
 }
 
 pub fn set_attrib_ptrs_pos_tex<Data>(_:&mut RendererVertFragDef<Data>){
-    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_POS_TEX * 4,
+    gl_vertex_attrib_pointer(0, 3, gl::GL_FLOAT, false, VERTEX_SIZE_POS_TEX * 4,
                              0);
     gl_enable_vertex_attrib_array(0);
 
-    gl_vertex_attrib_pointer(1, 2, GL_FLOAT, false, VERTEX_SIZE_POS_TEX * 4,
+    gl_vertex_attrib_pointer(1, 2, gl::GL_FLOAT, false, VERTEX_SIZE_POS_TEX * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
 
 }
 
 pub fn set_attrib_ptrs_pos_color_normal<Data>(_:&mut RendererVertFragDef<Data>){
-    gl_vertex_attrib_pointer(0, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
+    gl_vertex_attrib_pointer(0, 3, gl::GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
                              0);
     gl_enable_vertex_attrib_array(0);
 
-    gl_vertex_attrib_pointer(1, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
+    gl_vertex_attrib_pointer(1, 3, gl::GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
                              3 * 4);
     gl_enable_vertex_attrib_array(1);
 
-    gl_vertex_attrib_pointer(2, 3, GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
+    gl_vertex_attrib_pointer(2, 3, gl::GL_FLOAT, false, VERTEX_SIZE_POS_COLOR_NORMAL * 4,
                              6 * 4);
     gl_enable_vertex_attrib_array(2);
 
 }
 
 impl<Data> RendererVertFrag for RendererVertFragDef<Data>{
-    fn render_mode(&self) -> usize {
+    fn render_mode(&self) -> u32 {
         self.render_mode
     }
 
@@ -367,22 +369,22 @@ impl<Data> RendererVertFrag for RendererVertFragDef<Data>{
 
         gl_bind_vertex_array(self.vao);
 
-        gl_bind_buffer(GL_ARRAY_BUFFER, self.vbo);
+        gl_bind_buffer(gl::GL_ARRAY_BUFFER, self.vbo);
 
-        gl_buffer_data(GL_ARRAY_BUFFER,
+        gl_buffer_data(gl::GL_ARRAY_BUFFER,
                        self.vertex_pool.len(),
                        self.vertex_pool.as_slice(),
-                       GL_STATIC_DRAW);
+                       gl::GL_STATIC_DRAW);
 
-        gl_bind_buffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo);
-        gl_buffer_data(GL_ELEMENT_ARRAY_BUFFER, self.index_pool.len(),
+        gl_bind_buffer(gl::GL_ELEMENT_ARRAY_BUFFER, self.ebo);
+        gl_buffer_data(gl::GL_ELEMENT_ARRAY_BUFFER, self.index_pool.len(),
                        self.index_pool.as_slice(),
-                       GL_STATIC_DRAW
+                       gl::GL_STATIC_DRAW
         );
 
         self.set_attrib_ptrs();
 
-        gl_bind_buffer(GL_ARRAY_BUFFER, 0);
+        gl_bind_buffer(gl::GL_ARRAY_BUFFER, 0);
         gl_bind_vertex_array(0);
 
         self.constructed = true;
@@ -406,7 +408,7 @@ impl<Data> RendererVertFrag for RendererVertFragDef<Data>{
         if !self.constructed {return false;};
 
         gl_bind_vertex_array(self.vao);
-        gl_draw_elements(self.render_mode, self.index_pool.len(), GL_UNSIGNED_INT, 0);
+        gl_draw_elements(self.render_mode, self.index_pool.len(), gl::GL_UNSIGNED_INT, null());
         gl_bind_vertex_array(0);
 
         true
@@ -427,9 +429,9 @@ impl<Data> RendererVertFrag for RendererVertFragDef<Data>{
 }
 
 impl<Data> RendererVertFragDef<Data>{
-    pub fn new(vs: usize,
+    pub fn new(vs: u32,
                set_attrib_ptrs : fn (&mut RendererVertFragDef<Data>),
-               render_mode: usize,
+               render_mode: u32,
                shader_name: &str,
                data : Data,
                pre_render : Option<fn(&mut RendererVertFragDef<Data>)>) -> RendererVertFragDef<Data>{

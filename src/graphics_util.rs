@@ -2,21 +2,22 @@ use std::ffi::CString;
 use ansi_term::Colour::Red;
 use ansi_term::Colour::Blue;
 use graphics::*;
+use glad_gl::gl;
 
 //vf for vertex&fragment
 //exits program on any error occured during shader proccessing
-pub fn create_program_vf(vert_source: &str, frag_source: &str) -> usize{
+pub fn create_program_vf(vert_source: &str, frag_source: &str) -> u32{
     let prog = gl_create_program();
-    let vert_id = gl_create_shader(GL_VERTEX_SHADER);
-    let frag_id = gl_create_shader(GL_FRAGMENT_SHADER);
+    let vert_id = gl_create_shader(gl::GL_VERTEX_SHADER);
+    let frag_id = gl_create_shader(gl::GL_FRAGMENT_SHADER);
 
     gl_shader_source(vert_id, vert_source);
     gl_shader_source(frag_id, frag_source);
 
-    let mut status: usize = 0;
+    let mut status: i32 = 0;
 
     gl_compile_shader(vert_id);
-    gl_get_shaderiv(vert_id, GL_COMPILE_STATUS, &mut status);
+    gl_get_shaderiv(vert_id, gl::GL_COMPILE_STATUS, &mut status);
     if status == 0 {
         eprint!("Failed to compile vertex shader !
 Source:
@@ -29,10 +30,10 @@ Error:
         panic!();
     }
 
-    
+
 
     gl_compile_shader(frag_id);
-    gl_get_shaderiv(frag_id, GL_COMPILE_STATUS, &mut status);
+    gl_get_shaderiv(frag_id, gl::GL_COMPILE_STATUS, &mut status);
     if status == 0 {
          eprint!("Failed to compile fragment shader !
 Source:
