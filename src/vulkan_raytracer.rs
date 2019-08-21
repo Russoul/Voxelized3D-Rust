@@ -190,3 +190,7 @@ pub fn setup(width : u32, height : u32, cam : &Cam, triangles_rt : &Vector<Trian
     Vector::from(&buffer_content[..]) //TODO copying here
 
 }
+
+pub fn setup_raw(){
+    
+}
