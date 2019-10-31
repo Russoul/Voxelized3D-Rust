@@ -1,5 +1,9 @@
 //#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
 
+#![feature(const_generics)]
+#![feature(trivial_bounds)]
+#![feature(specialization)]
+
 extern crate generic_array;
 extern crate typenum;
 extern crate alga;
@@ -12,6 +16,8 @@ extern crate num;
 extern crate glfw;
 extern crate image;
 extern crate glad_gl;
+extern crate paste;
+extern crate smallvec;
 
 #[cfg(feature = "vulkan")]
 extern crate vulkano;
@@ -34,6 +40,8 @@ mod util;
 mod math;
 #[macro_use]
 mod matrix;
+#[macro_use]
+mod matrix_const;
 
 #[cfg(feature = "vulkan")]
 mod vulkan_raytracer;
@@ -187,7 +195,7 @@ fn run(){
     //let den = f;
     //construct_grid(&den4, Vec3::new(-3.0, -3.0, -8.0), BLOCK_SIZE, CHUNK_SIZE, 8, &mut renderer_tr_light, &mut renderer_lines);
 
-    let test_sphere = Sphere{center : Vec3::new(2.7, 1.0, 0.0), rad : 2.4};
+    let test_sphere = Sphere{center : Vec3::new(2.7, -1.0, 0.0), rad : 2.4};
     let test_sphere2 = Sphere{center : Vec3::new(2.7, 3.0, 0.0), rad : 2.4};
     let test_sphere3 = Sphere{center : Vec3::new(2.7, 1.0, 2.7), rad : 1.4};
     let ts1 = mk_sphere(test_sphere);
@@ -195,10 +203,11 @@ fn run(){
     let ts22 = mk_sphere(test_sphere3);
     let ts3 = difference3(ts1, ts2);
     let ts4 = difference3(ts3, ts22);
+    let a1 = difference3(noise, ts1);
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
     //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
     let mut triangles_for_rt = Vector::with_capacity(1000);
-    construct_grid(noise, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color, &mut triangles_for_rt);
+    construct_grid(a1, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color, &mut triangles_for_rt);
 
 
     add_triangle_color(&mut renderer.render_triangles_pos_color, Triangle3{p1 : vec3![-0.2, 0.0, -1.0], p2 : vec3![0.2, 0.0, -1.0], p3 : vec3![0.0, 0.3, -1.0]}, red);
@@ -218,19 +227,21 @@ fn run(){
 
 
 
-    add_quad_pos_tex(&mut renderer.render_triangles_texture_screen_pos_tex, [vec3![0.0, 0.0, 0.0], vec3![800.0, 0.0, 0.0], vec3![800.0, 600.0, 0.0], vec3![0.0, 600.0, 0.0]], [vec2![0.0, 1.0], vec2![1.0, 1.0], vec2![1.0, 0.0], vec2![0.0, 0.0]]);
+    //add_quad_pos_tex(&mut renderer.render_triangles_texture_screen_pos_tex, [vec3![0.0, 0.0, 0.0], vec3![800.0, 0.0, 0.0], vec3![800.0, 600.0, 0.0], vec3![0.0, 600.0, 0.0]], [vec2![0.0, 1.0], vec2![1.0, 1.0], vec2![1.0, 0.0], vec2![0.0, 0.0]]);
 
 
     renderer.run(move |renderer, dt_ns| {
 
         handle_input(renderer.glfw.as_mut().unwrap(), renderer.window.as_mut().unwrap(), dt_ns, &mut renderer.camera);
 
-        let img = vulkan_raytracer::setup(def_width, def_height, &renderer.camera, &triangles_for_rt);
-        gl_tex_image_2d(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, def_width, def_height, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, img.as_slice());
+        //let img = vulkan_raytracer::setup(def_width, def_height, &renderer.camera, &triangles_for_rt);
+        //gl_tex_image_2d(gl::GL_TEXTURE_2D, 0, gl::GL_RGBA, def_width, def_height, 0, gl::GL_RGBA, gl::GL_UNSIGNED_BYTE, img.as_slice());
 
         gl_enable(gl::GL_DEPTH_TEST);
         gl_clear(gl::GL_COLOR_BUFFER_BIT | gl::GL_DEPTH_BUFFER_BIT);
         gl_clear_color(0.3, 0.2, 0.6, 1.0);
+
+        
     });
 }
 

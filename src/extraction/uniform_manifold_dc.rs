@@ -489,7 +489,7 @@ fn sample_qef_brute(square : Cube<f32>, n : usize, planes : &Vector<Plane<f32>>)
 fn find_minimizer(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point : Vec3<f32>) -> Vec3<f32> {
     let mut mat : Mat<f32, U6, U4> = Mat::empty();
     //println!("planes count = {}", planes.len()); //6 planes is possible
-    for i in 0..planes.len(){
+    for i in 0..usize::min(planes.len(), 6){
         mat[(i, 0)] = planes[i].normal.x;
         mat[(i, 1)] = planes[i].normal.y;
         mat[(i, 2)] = planes[i].normal.z;
