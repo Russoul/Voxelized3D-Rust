@@ -203,7 +203,7 @@ fn run(){
     let ts22 = mk_sphere(test_sphere3);
     let ts3 = difference3(ts1, ts2);
     let ts4 = difference3(ts3, ts22);
-    let a1 = difference3(noise, ts1);
+    let a1 = union3(difference3(noise, ts1), mk_obb(Vec3::new(-1.0, -1.0, 0.0), Vec3::new(1.0, -1.0, 0.0).normalize(), Vec3::new(1.0, 1.0, 0.5).normalize(), Vec3::new(1.0, 0.5, 0.2)));
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
     //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
     let mut triangles_for_rt = Vector::with_capacity(1000);
