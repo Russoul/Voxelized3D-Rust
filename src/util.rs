@@ -2,6 +2,34 @@ use time::precise_time_ns;
 use std::rc::Rc;
 use util::ListI::*;
 
+pub fn ar_mut<A>(amount : usize) -> *mut A{
+    let mut v = Vec::with_capacity(amount);
+    let ptr = v.as_mut_ptr();
+    std::mem::forget(v);
+    ptr
+}
+
+pub fn ar_const<A>(amount : usize) -> *const A{
+    let v = Vec::with_capacity(amount);
+    let ptr = v.as_ptr();
+    std::mem::forget(v);
+    ptr
+}
+
+pub fn val_mut<A>(v : A) -> *mut A{
+    let mut v = vec![v];
+    let ptr = v.as_mut_ptr();
+    std::mem::forget(v);
+    ptr
+}
+
+pub fn val_const<A>(v : A) -> *const A{
+    let v = vec![v];
+    let ptr = v.as_ptr();
+    std::mem::forget(v);
+    ptr
+}
+
 pub fn timed<T>(str_fn: &(Fn(u64) -> String), f : &mut (FnMut() -> T)) -> T{
     let t1 = precise_time_ns();
     let ret = f();

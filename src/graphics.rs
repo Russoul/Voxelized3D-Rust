@@ -13,6 +13,7 @@ use std;
 use matrix::{Vec3};
 use glad_gl::gl;
 use std::os::raw::c_void;
+use glad_gl::gl::GLbitfield;
 
 pub struct WindowInfo{
     pub width: usize,
@@ -298,7 +299,9 @@ pub fn gl_validate_program(prog: u32){
 
 pub fn gl_get_shader_info_log(shader: u32) -> String{
     unsafe{
-        const len: i32 = 4096;//TODO placeholder
+        let mut len: i32 = 0;
+        gl::GetShaderiv(shader, gl::GL_INFO_LOG_LENGTH, &mut len);
+        println!("info log len {}", len);
         let mut info : Vec<u8> = Vec::with_capacity(len as usize);
         let mut len_ret : i32 = 0;
         gl::GetShaderInfoLog(shader, len, &mut len_ret, std::mem::transmute(info.as_mut_ptr()));
@@ -357,5 +360,17 @@ pub fn gl_clear(val : u32){
 pub fn gl_get_string<'a>(val : u32) -> & 'a str{
     unsafe{
         CStr::from_ptr(gl::GetString(val) as *const i8).to_str().unwrap()
+    }
+}
+
+pub fn gl_dispatch_compute(num_groups_x : u32, num_groups_y : u32, num_groups_z : u32){
+    unsafe{
+        gl::DispatchCompute(num_groups_x, num_groups_y, num_groups_z);
+    }
+}
+
+pub fn gl_memory_barrier(bit : GLbitfield){
+    unsafe{
+        gl::MemoryBarrier(bit);
     }
 }

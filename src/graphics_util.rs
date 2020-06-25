@@ -4,9 +4,42 @@ use ansi_term::Colour::Blue;
 use graphics::*;
 use glad_gl::gl;
 
-//vf for vertex&fragment
-//exits program on any error occured during shader proccessing
-pub fn create_program_vf(vert_source: &str, frag_source: &str) -> u32{
+pub fn create_compute_program(compute_source : &str) -> u32{
+    let prog = gl_create_program();
+    let comp_id = gl_create_shader(gl::GL_COMPUTE_SHADER);
+
+    gl_shader_source(comp_id, compute_source);
+
+    let mut status: i32 = 0;
+
+    gl_compile_shader(comp_id);
+    gl_get_shaderiv(comp_id, gl::GL_COMPILE_STATUS, &mut status);
+    if status == 0 {
+        eprint!("Failed to compile compute shader !
+Source:
+-------------------------------------
+{}
+-------------------------------------
+Error:
+{}
+        ", Blue.paint(compute_source), Red.paint(gl_get_shader_info_log(comp_id)));
+        panic!();
+    }
+
+
+
+
+
+    gl_attach_shader(prog, comp_id);
+    gl_link_program(prog);
+    gl_validate_program(prog);
+
+    gl_delete_shader(comp_id);
+
+    prog
+}
+
+pub fn create_vert_frag_program(vert_source: &str, frag_source: &str) -> u32{
     let prog = gl_create_program();
     let vert_id = gl_create_shader(gl::GL_VERTEX_SHADER);
     let frag_id = gl_create_shader(gl::GL_FRAGMENT_SHADER);

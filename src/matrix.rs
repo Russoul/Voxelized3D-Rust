@@ -14,7 +14,7 @@ pub trait Value: Copy + PartialEq + Debug  {
 }
 impl<T: Copy + PartialEq + Debug> Value for T {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
 #[repr(C)]
 pub struct Mat<T : Value,N : Clone + Unsigned,M : Clone + Unsigned> where
     N : Mul<M>,
@@ -29,6 +29,7 @@ impl<T : Value, N : Clone + Unsigned, M : Clone + Unsigned> Copy for Mat<T, N, M
     GenericArray<T, typenum::Prod<N,M>> : Copy{
 
 }
+
 
 impl<T : Value + Display, N : Unsigned + Clone, M : Unsigned + Clone> Display for Mat<T, N, M> where N : Mul<M>, Prod<N, M> : ArrayLength<T>{
 
@@ -106,7 +107,7 @@ deref_impl!(U4, U4; M4x4);
 pub type Vec<T, N> = Mat<T,N,U1>;
 pub type Vec2<T> = Vec<T,U2>;
 pub type Vec3<T> = Vec<T,U3>;
-pub type Vec4<T> = Vec<T,U3>;
+pub type Vec4<T> = Vec<T,U4>;
 pub type Mat3<T> = Mat<T, U3, U3>;
 pub type Mat4<T> = Mat<T, U4, U4>;
 
@@ -119,6 +120,36 @@ impl <T : Value, N : Clone + Unsigned, M : Clone + Unsigned> Mat<T,N,M> where
         self.ar.as_slice()
     }
 
+    pub fn as_mut_slice(&mut self) -> &mut[T]{self.ar.as_mut_slice()}
+
+    pub fn map<R : Value, F : Fn(T) -> R>(self, f : F) -> Mat<R, N, M> where Prod<N, M> : ArrayLength<R>{
+        Mat{ar : GenericArray::map(self.ar, f)}
+    }
+
+    pub fn foldl<R, F : Fn(R, T) -> R>(self, init : R, f : F) -> R{
+
+        let mut acc = init;
+        for i in 0..<N as Mul<M>>::Output::to_usize(){
+            acc = f(acc, self.ar[i]);
+        }
+
+        acc
+    }
+
+
+}
+
+impl <T : Value + Identity<Additive>, N : Clone + Unsigned> Vec<T,N> where
+    N : Mul<U1>,
+    Prod<N,U1> : ArrayLength<T>,{
+
+    pub fn drop<K : Unsigned + Clone>(self) -> Vec<T, Diff<N, K>> where N : Sub<K>, Diff<N, K> : Unsigned + Clone, Diff<N, K> : Mul<U1>, Prod<Diff<N, K>, U1> : ArrayLength<T>{
+        let mut empty = Vec::<T, Diff<N, K>>::empty();
+        for i in 0..<N as Sub<K>>::Output::to_usize(){
+            empty[i] = self[i + K::to_usize()];
+        }
+        empty
+    }
 }
 
 impl <T : Value + Identity<Additive>, N : Clone + Unsigned, M : Clone + Unsigned> Mat<T,N,M> where
@@ -148,6 +179,16 @@ impl <T : Value + Identity<Additive> + Identity<Multiplicative>, N : Unsigned + 
 
 }
 
+impl<T : Value, U : Unsigned + Clone> Vec<T, U> where
+    U : Mul<U1>,
+    Prod<U, U1> : ArrayLength<T>,
+    U : ArrayLength<T>,
+{
+    pub fn from_slice(slice: &[T]) -> Vec<T, U>{
+        Vec::<T, U>{ar : GenericArray::<T,  Prod<U, U1> >::clone_from_slice(slice)}
+    }
+}
+
 impl<T : Value> Vec2<T>{
     pub fn new(x : T, y : T) -> Vec2<T>{
         Vec::<T, U2>{ar : GenericArray::<T, U2>::clone_from_slice(&[x,y])}
@@ -158,6 +199,13 @@ impl<T : Value> Vec2<T>{
 impl<T : Value> Vec3<T>{
     pub fn new(x : T, y : T, z : T) -> Vec3<T>{
         Vec::<T, U3>{ar : GenericArray::<T, U3>::clone_from_slice(&[x,y,z])}
+    }
+
+}
+
+impl<T : Value> Vec4<T>{
+    pub fn new(x : T, y : T, z : T, w : T) -> Vec4<T>{
+        Vec::<T, U4>{ar : GenericArray::<T, U4>::clone_from_slice(&[x,y,z,w])}
     }
 
 }
@@ -471,6 +519,14 @@ macro_rules! vec3 {
     ( $x:expr , $y:expr, $z:expr ) => {
         {
             Vec3::new($x, $y, $z)
+        }
+    };
+}
+
+macro_rules! vec4 {
+    ( $x:expr , $y:expr, $z:expr, $w:expr ) => {
+        {
+            Vec4::new($x, $y, $z, $w)
         }
     };
 }

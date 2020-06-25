@@ -10,6 +10,14 @@ use std::collections::HashMap;
 use matrix::*;
 use typenum::{U1, U2, U3, U4, U5, U6};
 use std::process::exit;
+use lapacke::{sgeqrf, sgesvd};
+
+#[link(name = "gfortran", kind = "dylib")]
+#[link(name = "blas")]
+#[link(name = "lapack")]
+#[link(name = "lapacke")]
+extern {}
+
 //use matrix::*;
 
 //uniform manifold dual contouring is a modification to dual marching cubes (hermite extension to dual marching cubes)
@@ -540,6 +548,59 @@ fn find_minimizer(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point :
     minimizer
 }
 
+fn find_minimizer_lapacke(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point : Vec3<f32>) -> Vec3<f32> {
+    let mut mat : Mat<f32, U6, U4> = Mat::empty();
+    //println!("planes count = {}", planes.len()); //6 planes is possible
+    for i in 0..usize::min(planes.len(), 6){
+        mat[(i, 0)] = planes[i].normal.x;
+        mat[(i, 1)] = planes[i].normal.y;
+        mat[(i, 2)] = planes[i].normal.z;
+        mat[(i, 3)] = planes[i].normal.dot(planes[i].point - mass_point);
+    }
+
+
+    let mut tau = [0f32; 4];
+    unsafe{
+        sgeqrf(lapacke::Layout::RowMajor, planes.len() as i32, 4,  mat.as_mut_slice(), 4, &mut tau);
+    }
+
+    let mut mat_a = Mat3::new(
+        mat[(0, 0)], mat[(0, 1)], mat[(0, 2)],
+        0.0, mat[(1, 1)], mat[(1, 2)],
+        0.0, 0.0, mat[(2, 2)]
+    );
+
+
+    let b = vec3![mat[(0, 3)], mat[(1, 3)], mat[(2, 3)]];
+    let mut residual = mat[(3, 3)] * mat[(3, 3)];
+    if planes.len() < 4{
+        residual = 0.0;
+    }
+
+    let mut eigenval = Vec3::empty();
+    let mut u = Mat3::empty();
+    let mut ut = Mat3::empty();
+    let mut cache = [0f32; 2];
+    unsafe{
+        sgesvd(lapacke::Layout::RowMajor, b'A', b'A', 3, 3, mat_a.as_mut_slice(), 3, eigenval.as_mut_slice(), u.as_mut_slice(), 3, ut.as_mut_slice(), 3, &mut cache);
+    }
+
+
+
+    let truncate_eps = 0.1;
+    let eigenval_mapped = Mat::<f32, U3, U1>{ar : eigenval.ar.map(|v| if v.abs() > truncate_eps {1.0/v} else {0.0})};
+    let mut mat_diag : Mat3<f32> = Mat::empty();
+    mat_diag[(0, 0)] = eigenval_mapped[0];
+    mat_diag[(1, 1)] = eigenval_mapped[1];
+    mat_diag[(2, 2)] = eigenval_mapped[2];
+
+    let mat_inverse = ut.transpose() * mat_diag * u.transpose();
+
+    let minimizer = mat_inverse * b + mass_point;
+
+    minimizer
+}
+
 //constructs grid: calculates hermite data and configuration for each cell
 //TODO generating triangles right in this function would benefit performance (no extra looping through cells)
 pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : usize, accuracy : usize, render_tr_light : &mut RendererVertFragDef<()>, render_debug_lines : &mut RendererVertFragDef<()>, triangles_for_rt : &mut Vector<Triangle3<f32>>) -> HermiteGrid<f32>{
@@ -592,13 +653,13 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
 
                 let edge = Line3{start : cell_min + v1 * a, end : cell_min + v2 * a};
 
-                let intersection = sample_surface_intersection(edge, accuracy, f);
+                let intersection = sample_surface_intersection(edge, ((accuracy as f32).log2() as usize) + 1, f);
                 
-                let mut normal = sample_normal(intersection, 1e-5, f);
+                let mut normal = sample_normal(intersection, a / 1024.0, f);
 
-                mass_point += intersection - bounds.center;
+                mass_point += intersection;
 
-                if normal.x.is_nan() || normal.y.is_nan() || normal.z.is_nan() {
+                /*if normal.x.is_nan() || normal.y.is_nan() || normal.z.is_nan() {
                     //println!("nan in normal !");
                     //println!("intersection {}", intersection);
                     //exit(1);
@@ -608,7 +669,7 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
                     hermite_data.insert(edge_id.clone(), plane);
                     continue; // do not push zero normal to the planes
                     //weighted normals for such cases for proper lighting ?
-                }
+                }*/
 
                 add_cube_bounds_pos_color(render_debug_lines, Cube{center : intersection, extent : bounds.extent / 16.0}, Vec3::new(1.0, 1.0, 1.0));
 
@@ -616,77 +677,13 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
                 hermite_data.insert(edge_id.clone(), plane);
                 cur_planes.push(plane); //for current vertex QEF processing
             }
-            mass_point *= 1.0 / vertex.len() as f32;
-            mass_point += bounds.center;
-
-
-            let is_valid_qef_estimation = |minimizer : Vec3<f32>| -> bool{
-                point3_inside_sphere_inclusive(minimizer, Sphere{center : bounds.center, rad : 3.0.sqrt() * bounds.extent * 3.1})
-            };
+            mass_point *= 1.0 / cur_planes.len() as f32;
            
-            //let minimizer_opt = solve_qef_analically_ATA_ATb(&cur_planes);
-            //let minimizer = if minimizer_opt.is_some() {minimizer_opt.unwrap()} else {bounds.center};
-            //let minimizer = sample_qef_brute(&bounds, 32, &cur_planes);
-            // let minimizer = if(corner_vertex_count > 1){
-            //     let try = solve_qef_via_bindings(&cur_planes);
-            //     let minimizer = 
-            //         if !is_valid_qef_estimation(&try.0){
-            //             println!("bad minimizer {}", &try.0);
-            //             use rand;
-            //             use rand::Rng;
-            //             use rand::distributions::{Sample, Range};
-            //             let mut rng = rand::thread_rng();
-            //             let mut between = Range::new(0.0, 1.0);
-            //             let r = between.sample(&mut rng);
-            //             let g = between.sample(&mut rng);
-            //             let b = between.sample(&mut rng);
 
-            //             add_square3_bounds_color(render_debug_lines, bounds.clone(), Vec3::new(r,g,b));
-            //             add_square3_bounds_color(render_debug_lines, Square3{center : try.0, extent : 0.075/4.0}, Vec3::new(r,g,b));
-            //             add_line3_color(render_debug_lines, Line3{start : bounds.center, end : try.0}, Vec3::new(r,g,b));
-
-            //             for plane in &cur_planes{
-            //                 add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vec3::new(r,g,b));
-            //                 add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vec3::new(r,g,b));
-            //             }
-
-            //             try.0
-            //         }else{
-            //             try.0
-            //         };
-
-            //     minimizer
-            // }else{
-            //     println!("sampled");
-            //     sample_qef_brute(&bounds, 32, &cur_planes)
-            // };
-            let minimizer = find_minimizer( bounds, &cur_planes, mass_point);
+            let minimizer = find_minimizer_lapacke( bounds, &cur_planes, mass_point);
 
             add_cube_bounds_pos_color(render_debug_lines, Cube{center : minimizer, extent : bounds.extent / 16.0}, Vec3::new(1.0, 1.0, 0.0));
 
-            // if !is_valid_qef_estimation(&minimizer){
-            //     println!("bad minimizer {}, det {}, err {}", &minimizer, try.1, calc_qef(&minimizer, &cur_planes));
-            //     use rand;
-            //     use rand::Rng;
-            //     use rand::distributions::{Sample, Range};
-            //     let mut rng = rand::thread_rng();
-            //     let mut between = Range::new(0.0, 1.0);
-            //     let r = between.sample(&mut rng);
-            //     let g = between.sample(&mut rng);
-            //     let b = between.sample(&mut rng);
-
-            //     add_square3_bounds_color(render_debug_lines, bounds.clone(), Vec3::new(r,g,b));
-            //     add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vec3::new(r,g,b));
-            //     add_line3_color(render_debug_lines, Line3{start : bounds.center, end : minimizer}, Vec3::new(r,g,b));
-
-            //     for plane in &cur_planes{
-            //         add_square3_bounds_color(render_debug_lines, Square3{center : plane.point, extent : 0.075/4.0}, Vec3::new(r,g,b));
-            //         add_line3_color(render_debug_lines, Line3{start : plane.point, end : plane.point + plane.normal * (0.075)}, Vec3::new(r,g,b));
-            //     }
-
-            // }
-
-            //add_square3_bounds_color(render_debug_lines, Square3{center : minimizer, extent : 0.075/4.0}, Vec3::new(1.0,1.0,0.0));
 
             for edge_id in &vertex { 
                 cached_cell.insert(edge_id.clone(), minimizer);//duplicates are not possible

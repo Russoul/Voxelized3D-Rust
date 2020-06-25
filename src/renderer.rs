@@ -5,7 +5,7 @@ use math::*;
 use std::sync::mpsc::Receiver;
 use std::collections::HashMap;
 use std::fs;
-use graphics_util::create_program_vf;
+use graphics_util::create_vert_frag_program;
 use std::io::Read;
 
 use matrix::*;
@@ -42,7 +42,7 @@ fn load_shaders_vf() -> HashMap<String, Program>{
             let mut source_frag = String::new();
             file_frag.read_to_string(&mut source_frag).unwrap();
 
-            let prog = create_program_vf(
+            let prog = create_vert_frag_program(
                 &source_vert,
                 &source_frag);
 
@@ -161,6 +161,7 @@ impl Renderer{
         // Make the window's context current
         window.make_current();
         gl::load(|e| glfw.get_proc_address_raw(e) as *const std::os::raw::c_void);
+        glad_vulkan::vk::load(|e| glfw.get_proc_address_raw(e) as *const std::os::raw::c_void);
         window.set_key_polling(true);
         window.set_framebuffer_size_polling(true);
 
@@ -585,6 +586,24 @@ pub fn add_line3_color<Data>(dat : &mut RendererVertFragDef<Data>, line : Line3<
     dat.index_pool.push(1 + dat.vertex_count);
 
     dat.vertex_count += 2;
+}
+
+pub fn add_triangle3_bounds_pos_color<Data>(dat : &mut RendererVertFragDef<Data>, tr : Triangle3<f32>, color : Vec3<f32>){
+    add_vector_to_pool(dat, tr.p1);
+    add_vector_to_pool(dat, color);
+    add_vector_to_pool(dat, tr.p2);
+    add_vector_to_pool(dat, color);
+    add_vector_to_pool(dat, tr.p3);
+    add_vector_to_pool(dat, color);
+
+    dat.index_pool.push(0 + dat.vertex_count);
+    dat.index_pool.push(1 + dat.vertex_count);
+    dat.index_pool.push(1 + dat.vertex_count);
+    dat.index_pool.push(2 + dat.vertex_count);
+    dat.index_pool.push(2 + dat.vertex_count);
+    dat.index_pool.push(0 + dat.vertex_count);
+
+    dat.vertex_count += 3;
 }
 
 pub fn add_cube_bounds_pos_color<Data>(dat : &mut RendererVertFragDef<Data>, cube : Cube<f32>, color : Vec3<f32>){

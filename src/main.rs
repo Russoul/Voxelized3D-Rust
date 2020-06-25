@@ -1,9 +1,5 @@
 //#![feature(box_syntax, box_patterns, clone_closures, copy_closures)]
 
-#![feature(const_generics)]
-#![feature(trivial_bounds)]
-#![feature(specialization)]
-
 extern crate generic_array;
 extern crate typenum;
 extern crate alga;
@@ -16,13 +12,18 @@ extern crate num;
 extern crate glfw;
 extern crate image;
 extern crate glad_gl;
+extern crate glad_vulkan;
 extern crate paste;
 extern crate smallvec;
+extern crate lapacke;
+#[macro_use] extern crate dyn_clone;
+#[macro_use] extern crate downcast_rs;
 
 #[cfg(feature = "vulkan")]
 extern crate vulkano;
 #[cfg(feature = "vulkan")]
 extern crate vulkano_shaders;
+
 
 //mod qef_bindings;
 
@@ -40,10 +41,11 @@ mod util;
 mod math;
 #[macro_use]
 mod matrix;
-#[macro_use]
-mod matrix_const;
+mod vulkan;
+//#[macro_use]
+//mod matrix_const;
 
-#[cfg(feature = "vulkan")]
+#[cfg(feature = "vulkan")] //not implemented
 mod vulkan_raytracer;
 
 
@@ -55,6 +57,7 @@ use extraction::dc;
 
 use extraction::uniform_manifold_dc;
 use extraction::uniform_manifold_dc::*;
+//use extraction::adaptive_manifold_dc;
 
 use noise::{Perlin};
 use graphics::*;
@@ -72,6 +75,7 @@ use typenum::{Cube as _, Prod, Unsigned};
 use generic_array::*;
 use matrix::*;
 use glad_gl::gl;
+use vulkan::create_instance;
 
 
 fn handle_input(glfw : &mut glfw::Glfw, win : &mut glfw::Window, dt_ns : u64, camera : &mut Cam){
@@ -171,6 +175,7 @@ fn run(){
     renderer.init(def_width, def_height, title);
     renderer.set_framebuffer_size_callback(|w, h| println!("new dims {} {}", w, h));
 
+
     let BLOCK_SIZE : f32 = 0.125;//2.0;
     let CHUNK_SIZE : usize = 128;//*2;
 
@@ -207,22 +212,26 @@ fn run(){
     //add_sphere_color(&mut renderer_tr_light, &test_sphere, 100, 100, Vec3::new(1.0, 1.0, 1.0));
     //construct_grid(&ts4, Vec3::new(-0.5, -2.5, -2.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color);
     let mut triangles_for_rt = Vector::with_capacity(1000);
-    construct_grid(a1, Vec3::new(-4.0, -2.5, -4.5), 1.0/8.0, 2*8*8, 32, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color, &mut triangles_for_rt);
-
+    construct_grid(a1, Vec3::new(-4.0, -2.5, -4.5), 0.125/2.0, 128, 16, &mut renderer.render_triangles_lighting_pos_color_normal, &mut renderer.render_lines_pos_color, &mut triangles_for_rt);
+    //unsafe { uni_manifold_dc::sample_grid(a1, Vec3::new(-4.0, -2.5, -4.5), 0.125 / 2.0, 128, 16, 0.001, &mut renderer.render_lines_pos_color); }
 
     add_triangle_color(&mut renderer.render_triangles_pos_color, Triangle3{p1 : vec3![-0.2, 0.0, -1.0], p2 : vec3![0.2, 0.0, -1.0], p3 : vec3![0.0, 0.3, -1.0]}, red);
 
     add_grid3_pos_color(&mut renderer.render_lines_pos_color, Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 1.0, 8, white);
 
     //println!("{:?}", img);
-    let mut tex = [0u32];
+    /*let mut tex = [0u32];
     gl_active_texture(gl::GL_TEXTURE0);
     gl_gen_textures(1, &mut tex);
     gl_bind_texture(gl::GL_TEXTURE_2D, tex[0]);
     gl_tex_parameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MAG_FILTER, gl::GL_LINEAR);
     gl_tex_parameteri(gl::GL_TEXTURE_2D, gl::GL_TEXTURE_MIN_FILTER, gl::GL_LINEAR);
-    renderer.render_triangles_texture_screen_pos_tex.data = tex[0];
+    renderer.render_triangles_texture_screen_pos_tex.data = tex[0];*/
+    //gl_use_program(rs_prog);
+    //gl_dispatch_compute(def_width, def_height, 1);
+    //gl_memory_barrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
+    //vulkan_raytracer::setup(def_width, def_height, &cam, &triangles_for_rt);
     //gl_generate_mipmap(GL_TEXTURE_2D);
 
 

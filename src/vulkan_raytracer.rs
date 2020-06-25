@@ -80,6 +80,9 @@ struct Input{
     cam : Camf,
     rays : [Rayf;4],
     num_triangles : u32,
+    num_terrain : u32,
+    num_shapes : u32,
+    num_ops : u32
 }
 
 impl From<Vec3<f32>> for Vec3f{
@@ -102,8 +105,8 @@ impl From<Ray<f32>> for Rayf{
 
 
 impl Input{
-    fn new(cam : Cam, rays : [Ray<f32>; 4], num : u32) -> Input{
-        Input{cam:From::from(cam), rays: [From::from(rays[0]), From::from(rays[1]), From::from(rays[2]), From::from(rays[3])], num_triangles : num}
+    fn new(cam : Cam, rays : [Ray<f32>; 4], num_triangles : u32, num_terrain : u32, num_shapes : u32, num_ops : u32) -> Input{
+        Input{cam:From::from(cam), rays: [From::from(rays[0]), From::from(rays[1]), From::from(rays[2]), From::from(rays[3])], num_triangles, num_shapes, num_terrain, num_ops}
     }
 }
 
@@ -155,13 +158,25 @@ pub fn setup(width : u32, height : u32, cam : &Cam, triangles_rt : &Vector<Trian
 
 
     let input = CpuAccessibleBuffer::from_data(device.clone(), BufferUsage::all(),
-                                                  Input::new(cam.clone(), rays, triangles_rt.len() as u32)).unwrap();
+                                                  Input::new(cam.clone(), rays, triangles_rt.len() as u32, 8, 2, 2)).unwrap();
+
+    let terrain = CpuAccessibleBuffer::from_data(device.clone(), BufferUsage::all(),
+        [0.0f32, 0.0, -2.0, 1.0,   0.8, 0.0, -2.0, 0.5]).unwrap();
+
+    let shapes = CpuAccessibleBuffer::from_data(device.clone(), BufferUsage::all(),
+                                                 [0u32, 0]).unwrap();
+
+    let ops = CpuAccessibleBuffer::from_data(device.clone(), BufferUsage::all(),
+                                                [0, 2u32]).unwrap();
 
     let set = Arc::new(PersistentDescriptorSet::start(compute_pipeline.clone(), 0)
         .add_image(image.clone()).unwrap()
         //.add_buffer(triangles.clone()).unwrap()
         .add_buffer(input.clone()).unwrap()
         .add_buffer(triangles.clone()).unwrap()
+        .add_buffer(terrain.clone()).unwrap()
+        .add_buffer(shapes.clone()).unwrap()
+        .add_buffer(ops.clone()).unwrap()
         .build().unwrap()
     );
     let buf = CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
