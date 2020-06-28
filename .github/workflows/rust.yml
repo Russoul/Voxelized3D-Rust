@@ -10,6 +10,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install gfortran
-      run: brew cask install --appdir="/usr/local/bin/" gfortran
+      run: brew cask install gfortran
+    - name: move it  
+      run: mv /gfortran /usr/local/bin/
     #- name: Build
       #run: cargo build --verbose
