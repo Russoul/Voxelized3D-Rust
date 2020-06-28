@@ -12,7 +12,7 @@ use typenum::{U1, U2, U3, U4, U5, U6};
 use std::process::exit;
 use lapacke::{sgeqrf, sgesvd};
 
-#[link(name = "gfortran", kind = "dylib")]
+#[link(name = "gfortran")]
 #[link(name = "blas")]
 #[link(name = "lapack")]
 #[link(name = "lapacke")]
