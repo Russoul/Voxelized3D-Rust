@@ -11,9 +11,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Get OpenBlas
+      - name: Get OpenBlas and fortran
         run: |
           c:\msys64\usr\bin\bash -l -c "pacman -S --noconfirm mingw-w64-x86_64-openblas"
+          c:\msys64\usr\bin\bash -l -c "pacman -S --noconfirm mingw-w64-x86_64-gcc-fortran"
       - name: Build
         run: |
           cargo build --verbose
