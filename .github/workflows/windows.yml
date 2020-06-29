@@ -11,5 +11,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Get OpenBlas
+        run: |
+          c:\msys64\usr\bin\bash -l -c "pacman -S --noconfirm mingw-w64-x86_64-openblas"
+          echo "::set-env name=PWD::$(c:\msys64\usr\bin\cygpath -u $(pwd))"
       - name: Build
-        run: cargo build --verbose
+        run: |
+          cd $env:PWD
+          cargo build --verbose
