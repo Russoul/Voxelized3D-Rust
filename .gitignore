@@ -11,4 +11,4 @@ Cargo.lock
 
 /.idea/
 .vscode
-voxelized-3d-cuda/
+/voxelized-3d-cuda/
