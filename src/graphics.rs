@@ -110,18 +110,6 @@ pub struct GlfwVidMode{
     refresh_rate : c_int,
 }
 
-#[cfg_attr(windows, link(name = "opengl32"))]
-#[cfg_attr(linux, link(name = "GL"))]
-#[cfg_attr(target_os = "macos", link(name = "OpenGL", kind = "framework"))]
-#[cfg_attr(target_os = "macos", link(name = "Cocoa", kind = "framework"))]
-#[cfg_attr(target_os = "macos", link(name = "IOKit", kind = "framework"))]
-#[cfg_attr(target_os = "macos", link(name = "CoreVideo", kind = "framework"))]
-
-//-framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
-//#[link(name = "OpenGL", kind = "framework")]
-#[link(name = "glfw3")]
-extern {}
-
 pub fn gl_generate_mipmap(target : u32){
     unsafe{
         gl::GenerateMipmap(target);

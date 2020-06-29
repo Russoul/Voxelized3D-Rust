@@ -3,7 +3,6 @@ use alga;
 use std;
 use noise::{NoiseFn, Perlin};
 use alga::general::{Real, Identity, Additive};
-use num;
 use std::ops::{Mul, Add, Neg};
 use typenum::{Prod, Unsigned, Minimum, Min, U1, U2, U3, U4};
 use matrix::*;
@@ -395,13 +394,6 @@ pub fn view_dir(pos : Vec3<f32>, look : Vec3<f32>, up : Vec3<f32>) -> Mat4<f32>{
 
 
 
-pub fn factorial<A : num::Unsigned + Copy>(e : A) -> A{
-    if e == num::one::<A>() || e == num::zero::<A>(){
-        num::one::<A>()
-    }else{
-        e * factorial(e - num::one::<A>())
-    }
-}
 
 pub fn givens_mat<A : Value + Mul + Add + MultiplicativeMonoid + AdditiveMonoid + Neg<Output=A>, N : Unsigned + Debug + Clone>(l : usize, m : usize, c : A, s : A) -> Mat<A, N, N> where N : Mul<N>, Prod<N, N> : ArrayLength<A>{
     let mut mat = Mat::identity();

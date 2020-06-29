@@ -1,11 +1,10 @@
 # Voxelized3D-Rust
 
 # Dependencies
-* rust
-* glfw3
-* OpenGL >= 3.3.0
+* rust(cargo)
+* OpenGL >= 3.3.0 (detected automatically)
 * cmake
-* blas, lapack, lapacke
+* blas, lapack (or accelerate framework on Mac, distributed with the OS)
 
 # Platforms
 * tested on mac

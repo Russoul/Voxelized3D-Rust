@@ -8,22 +8,18 @@ extern crate ansi_term;
 extern crate time;
 extern crate rand;
 extern crate noise;
-extern crate num;
 extern crate glfw;
-extern crate image;
 extern crate glad_gl;
 extern crate glad_vulkan;
-extern crate paste;
-extern crate smallvec;
-extern crate lapacke;
-#[macro_use] extern crate dyn_clone;
-#[macro_use] extern crate downcast_rs;
+extern crate lapack_src;
+extern crate lapack_sys;
 
 #[cfg(feature = "vulkan")]
 extern crate vulkano;
 #[cfg(feature = "vulkan")]
 extern crate vulkano_shaders;
-
+#[cfg(feature = "vulkan")] //not implemented
+mod vulkan_raytracer;
 
 //mod qef_bindings;
 
@@ -32,7 +28,6 @@ use std::ffi::*;
 use std::vec::Vec as Vector;
 use std::sync::Arc;
 
-mod test;
 mod graphics;
 mod graphics_util;
 mod renderer;
@@ -44,9 +39,6 @@ mod matrix;
 mod vulkan;
 //#[macro_use]
 //mod matrix_const;
-
-#[cfg(feature = "vulkan")] //not implemented
-mod vulkan_raytracer;
 
 
 mod extraction;

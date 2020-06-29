@@ -10,13 +10,7 @@ use std::collections::HashMap;
 use matrix::*;
 use typenum::{U1, U2, U3, U4, U5, U6};
 use std::process::exit;
-use lapacke::{sgeqrf, sgesvd};
-
-#[link(name = "gfortran")]
-#[link(name = "blas")]
-#[link(name = "lapack")]
-#[link(name = "lapacke")]
-extern {}
+use lapack_sys::{sgeqrf_, sgesvd_};
 
 //use matrix::*;
 
@@ -548,31 +542,43 @@ fn find_minimizer(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point :
     minimizer
 }
 
-fn find_minimizer_lapacke(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point : Vec3<f32>) -> Vec3<f32> {
-    let mut mat : Mat<f32, U6, U4> = Mat::empty();
+fn find_minimizer_lapack(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass_point : Vec3<f32>) -> Vec3<f32> {
+    //let mut mat : Mat<f32, U4, U6> = Mat::empty();
+    let mut mat = [0f32; 24];//column-major
+    let rows = planes.len();
+    let columns = 4;
     //println!("planes count = {}", planes.len()); //6 planes is possible
     for i in 0..usize::min(planes.len(), 6){
-        mat[(i, 0)] = planes[i].normal.x;
-        mat[(i, 1)] = planes[i].normal.y;
-        mat[(i, 2)] = planes[i].normal.z;
-        mat[(i, 3)] = planes[i].normal.dot(planes[i].point - mass_point);
+        mat[0 * rows + i] = planes[i].normal.x;
+        mat[1 * rows + i] = planes[i].normal.y;
+        mat[2 * rows + i] = planes[i].normal.z;
+        mat[3 * rows + i] = planes[i].normal.dot(planes[i].point - mass_point);
     }
 
 
     let mut tau = [0f32; 4];
     unsafe{
-        sgeqrf(lapacke::Layout::RowMajor, planes.len() as i32, 4,  mat.as_mut_slice(), 4, &mut tau);
+        let m = rows as i32;
+        let n = columns as i32;
+        let lda = m as i32;
+        let lwork = n as i32;
+        let mut work = vec![0f32; lwork as usize];
+        let mut info = 0i32;
+
+        sgeqrf_( & m, & n,  mat.as_mut_ptr(), & lda, tau.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
     }
 
-    let mut mat_a = Mat3::new(
-        mat[(0, 0)], mat[(0, 1)], mat[(0, 2)],
-        0.0, mat[(1, 1)], mat[(1, 2)],
-        0.0, 0.0, mat[(2, 2)]
-    );
+
+    let mut mat_a = [0f32; 9]; //column-major
+    mat_a[0] = mat[0 * rows + 0];
+    mat_a[4] = mat[1 * rows + 1];
+    mat_a[6] = mat[2 * rows + 0];
+    mat_a[7] = mat[2 * rows + 1];
+    mat_a[8] = mat[2 * rows + 2];
 
 
-    let b = vec3![mat[(0, 3)], mat[(1, 3)], mat[(2, 3)]];
-    let mut residual = mat[(3, 3)] * mat[(3, 3)];
+    let b = vec3![mat[3 * rows + 0], mat[3 * rows + 1], mat[3 * rows + 2]];
+    let mut residual = mat[3 * rows + 3] * mat[3 * rows + 3];
     if planes.len() < 4{
         residual = 0.0;
     }
@@ -580,9 +586,19 @@ fn find_minimizer_lapacke(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass
     let mut eigenval = Vec3::empty();
     let mut u = Mat3::empty();
     let mut ut = Mat3::empty();
-    let mut cache = [0f32; 2];
+    let mut cache = [0f32; 30];
     unsafe{
-        sgesvd(lapacke::Layout::RowMajor, b'A', b'A', 3, 3, mat_a.as_mut_slice(), 3, eigenval.as_mut_slice(), u.as_mut_slice(), 3, ut.as_mut_slice(), 3, &mut cache);
+        let m = 3;
+        let n = 3;
+        let lda = 3;
+        let ldu = 3;
+        let ldvt = 3;
+        let lwork = 30;
+        let mut info = 0;
+
+        let mut t = b'A' as i8;
+
+        sgesvd_(&mut t, &mut t, &m, &n, mat_a.as_mut_ptr(), &lda, eigenval.as_mut_slice().as_mut_ptr(), u.as_mut_slice().as_mut_ptr(), &ldu, ut.as_mut_slice().as_mut_ptr(), &ldvt, cache.as_mut_ptr(), &lwork, &mut info);
     }
 
 
@@ -594,7 +610,7 @@ fn find_minimizer_lapacke(bounds : Cube<f32>, planes : &Vector<Plane<f32>>, mass
     mat_diag[(1, 1)] = eigenval_mapped[1];
     mat_diag[(2, 2)] = eigenval_mapped[2];
 
-    let mat_inverse = ut.transpose() * mat_diag * u.transpose();
+    let mat_inverse = ut * mat_diag * u;
 
     let minimizer = mat_inverse * b + mass_point;
 
@@ -680,7 +696,7 @@ pub fn construct_grid(f : impl DenFn3<f32>, offset : Vec3<f32>, a : f32, size : 
             mass_point *= 1.0 / cur_planes.len() as f32;
            
 
-            let minimizer = find_minimizer_lapacke( bounds, &cur_planes, mass_point);
+            let minimizer = find_minimizer_lapack(bounds, &cur_planes, mass_point);
 
             add_cube_bounds_pos_color(render_debug_lines, Cube{center : minimizer, extent : bounds.extent / 16.0}, Vec3::new(1.0, 1.0, 0.0));
 
