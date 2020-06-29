@@ -11,7 +11,10 @@ extern crate noise;
 extern crate glfw;
 extern crate glad_gl;
 extern crate glad_vulkan;
-extern crate lapack_src;
+#[cfg(target_os = "macos")]
+extern crate accelerate_src;
+#[cfg(not(target_os = "macos"))]
+extern crate openblas_src;
 extern crate lapack_sys;
 
 #[cfg(feature = "vulkan")]

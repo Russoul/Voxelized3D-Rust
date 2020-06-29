@@ -22,9 +22,10 @@ vulkano = {version = "0.13.0", optional = true}
 vulkano-shaders = {version = "0.13.0", optional = true}
 glad-gl = { path = "./glad-gl" }
 glad-vulkan = { path = "./glad-vulkan" }
-[target.'cfg(target_os = "macos")'.dependencies]
-lapack-src = { version = "0.6", features = ["accelerate"] }
-
+[target."cfg(target_os = \"macos\")".dependencies.accelerate-src]
+version = "0.3"
+[target."cfg(not(target_os = \"macos\"))".dependencies.openblas-src]
+version = "0.9"
 
 [build-dependencies]
 cc = "*"
