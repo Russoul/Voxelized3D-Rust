@@ -2,6 +2,7 @@
 
 [![](https://github.com/Russoul/Voxelized3D-Rust/workflows/macOS/badge.svg)](https://github.com/Russoul/Voxelized3D-Rust/actions?query=workflow%3A"macOS")
 [![](https://github.com/Russoul/Voxelized3D-Rust/workflows/Windows/badge.svg)](https://github.com/Russoul/Voxelized3D-Rust/actions?query=workflow%3A"Windows")
+[![](https://github.com/Russoul/Voxelized3D-Rust/workflows/Ubuntu/badge.svg)](https://github.com/Russoul/Voxelized3D-Rust/actions?query=workflow%3A"Ubuntu")
 
 # Dependencies
 * rust(cargo)
