@@ -7,7 +7,8 @@
 * rust(cargo)
 * OpenGL >= 3.3.0 (detected automatically)
 * cmake
-* blas, lapack (or accelerate framework on Mac, distributed with the OS)
+* xrandr
+* OpenBlas (or accelerate framework on Mac, distributed with the OS, no need to install anything)
 
 # Pics
 ![UMDC + signed field geometry](imgs/uniform_manifold_dual_contouring.png)
