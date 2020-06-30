@@ -16,4 +16,6 @@ jobs:
           c:\msys64\usr\bin\bash -l -c "pacman -S --noconfirm mingw-w64-x86_64-openblas"
       - name: Build
         run: |
+          rustup toolchain install stable-gnu
+          rustup target add x86_64-pc-windows-gnu
           cargo build --verbose --target x86_64-pc-windows-gnu

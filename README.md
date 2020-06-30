@@ -1,5 +1,5 @@
 # Voxelized3D-Rust
-![macOS](https://github.com/Russoul/Voxelized3D-Rust/workflows/macOS/badge.svg)
+[![macOS](https://github.com/Russoul/Voxelized3D-Rust/workflows/macOS/badge.svg)](https://github.com/Russoul/Voxelized3D-Rust/actions?query=workflow%3AmacOS)
 # Dependencies
 * rust(cargo)
 * OpenGL >= 3.3.0 (detected automatically)
