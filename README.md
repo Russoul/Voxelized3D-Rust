@@ -7,7 +7,7 @@
 * rust(cargo)
 * OpenGL >= 3.3.0 (detected automatically)
 * cmake
-* xrandr
+* xrandr, xcursor, xinerama for linux with X11 window system
 * OpenBlas (or accelerate framework on Mac, distributed with the OS, no need to install anything)
 
 # Pics
